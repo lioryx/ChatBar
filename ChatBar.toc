@@ -12,4 +12,11 @@
 ## X-Category: Chat
 ## X-Website: http://www.wowinterface.com/downloads/info23678.html
 
-ChatBar.xml
+localization.en.lua
+localization.cn.lua
+localization.de.lua
+localization.fr.lua
+localization.es.lua
+Localization.ru.lua
+localization.tw.lua
+ChatBar.lua

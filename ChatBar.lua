@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------
--- ChatBar.lua 
+-- ChatBar.lua
 --------------------------------------------------------------------------
 --[[
 ChatBar
@@ -62,15 +62,15 @@ v1.1
 -Added VisibilityOptions, however autohide is a bit finicky atm.
 v1.0
 -Initial Release
-]]--
+]] --
 
 --------------------------------------------------
 -- Globals
 --------------------------------------------------
 
 CHAT_BAR_BUTTON_SIZE = 16; -- height/width of each button
-CHAT_BAR_EDGE_SIZE = 10; -- amount of space that the bar extends past the first/last button
-CHAT_BAR_MAX_BUTTONS = 20;
+CHAT_BAR_EDGE_SIZE = 10;   -- amount of space that the bar extends past the first/last button
+CHAT_BAR_MAX_BUTTONS = 21;
 CHAT_BAR_UPDATE_DELAY = 30;
 CHAT_BAR_LARGEBUTTONSCALE = 1.3;
 ChatBar_VerticalDisplay = false;
@@ -85,10 +85,192 @@ ChatBar_AlternateDisplay_Sliding = false;
 ChatBar_LargeButtons_Sliding = false;
 ChatBar_HideSpecialChannels = true;
 ChatBar_LastTell = nil;
-ChatBar_StoredStickies = { };
-ChatBar_HiddenButtons = { };
-ChatBar_AltArtDirs = { "SkinSolid", "SkinSquares" };
+ChatBar_StoredStickies = {};
+ChatBar_HiddenButtons = {};
+ChatBar_AltArtDirs = { "SkinSolid", "SkinSquares", "TextOnly" };
 ChatBar_ButtonScale = 1;
+
+local function ChatBar_IsTextOnlyArt()
+	return ChatBar_AltArtDirs[ChatBar_AltArt] == "TextOnly";
+end
+
+local function ChatBar_FormatButtonText(text)
+	if (ChatBar_IsTextOnlyArt() and type(text) == "string") then
+		return string.upper(strsub(text, 1, 1)) .. strsub(text, 2);
+	end
+	return text;
+end
+
+--------------------------------------------------
+-- UI Creation
+--------------------------------------------------
+
+local function ChatBar_CreateNamedTexture(frame, name, layer, texturePath, blendMode, hidden)
+	local texture = frame:CreateTexture(name, layer);
+	texture:SetAllPoints(frame);
+	texture:SetTexture(texturePath);
+	if (blendMode) then
+		texture:SetBlendMode(blendMode);
+	end
+	if (hidden) then
+		texture:Hide();
+	end
+	return texture;
+end
+
+function ChatBar_InitializeFrame(frame)
+	frame:RegisterEvent("UPDATE_CHAT_COLOR");
+	frame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE");
+	frame:RegisterEvent("PARTY_MEMBERS_CHANGED");
+	frame:RegisterEvent("RAID_ROSTER_UPDATE");
+	frame:RegisterEvent("PLAYER_GUILD_UPDATE");
+	frame:RegisterEvent("VARIABLES_LOADED");
+	frame:RegisterForDrag("LeftButton");
+	frame.velocity = 0;
+	frame.count = 0;
+	if (Eclipse) then
+		--Register with VisibilityOptions
+		Eclipse.registerForVisibility({
+			name = "ChatBarFrame",       --The name of the config, in this case also the name of the frame
+			uiname = "ChatBar",          --This is the base name of this reg to display in the description and ui
+			slashcom = { "chatbar", "cb" }, --These are the slash commands
+			reqs = { var = ChatBar_ShowIf, val = true, show = true },
+		});
+	end
+end
+
+function ChatBar_InitializeButton(button)
+	button.Text = getglobal(button:GetName() .. "Text");
+	button.ChatID = button:GetID();
+
+	getglobal(button:GetName() .. "Highlight"):SetAlpha(.75);
+	getglobal(button:GetName() .. "UpTex_Spec"):SetAlpha(.75);
+	getglobal(button:GetName() .. "UpTex_Shad"):SetAlpha(.75);
+	getglobal(button:GetName() .. "DownTex_Shad"):SetAlpha(1);
+
+	button:SetFrameLevel(button:GetFrameLevel() + 1);
+	button:RegisterForClicks("LeftButtonDown", "RightButtonDown");
+end
+
+function ChatBar_InitializeDropDown(dropDown)
+	UIDropDownMenu_Initialize(dropDown, ChatBar_LoadDropDownMenu, "MENU");
+end
+
+function ChatBar_Button_OnMouseDown()
+	getglobal(this:GetName() .. "UpTex_Spec"):Hide();
+	getglobal(this:GetName() .. "DownTex_Spec"):Show();
+end
+
+function ChatBar_Button_OnMouseUp()
+	getglobal(this:GetName() .. "UpTex_Spec"):Show();
+	getglobal(this:GetName() .. "DownTex_Spec"):Hide();
+end
+
+function ChatBar_CreateButton(parent, id)
+	local buttonName = parent:GetName() .. "Button" .. id;
+	local button = CreateFrame("Button", buttonName, parent);
+	button:SetID(id);
+	button:SetWidth(CHAT_BAR_BUTTON_SIZE);
+	button:SetHeight(CHAT_BAR_BUTTON_SIZE);
+
+	local text = button:CreateFontString(buttonName .. "Text", "OVERLAY", "GameFontNormalSmall");
+	text:SetWidth(12);
+	text:SetHeight(12);
+	text:SetJustifyH("CENTER");
+	text:SetPoint("BOTTOM", button, "TOP", 0, 0);
+
+	ChatBar_CreateNamedTexture(button, buttonName .. "UpTex_Spec", "OVERLAY",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Up_Spec");
+	ChatBar_CreateNamedTexture(button, buttonName .. "DownTex_Spec", "OVERLAY",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Down_Spec", nil, true);
+	ChatBar_CreateNamedTexture(button, buttonName .. "Flash", "OVERLAY",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Glow_Alpha", "ADD", true);
+	ChatBar_CreateNamedTexture(button, buttonName .. "Center", "ARTWORK",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Center");
+	ChatBar_CreateNamedTexture(button, buttonName .. "Background", "BORDER",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_BG");
+
+	local normalTexture = ChatBar_CreateNamedTexture(button, buttonName .. "UpTex_Shad", "OVERLAY",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Up_Shad");
+	button:SetNormalTexture(normalTexture);
+
+	local pushedTexture = ChatBar_CreateNamedTexture(button, buttonName .. "DownTex_Shad", "OVERLAY",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Down_Shad");
+	button:SetPushedTexture(pushedTexture);
+
+	local highlightTexture = ChatBar_CreateNamedTexture(button, buttonName .. "Highlight", "OVERLAY",
+		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Glow_Alpha", "ADD");
+	button:SetHighlightTexture(highlightTexture);
+
+	button:SetScript("OnEnter", ChatBar_Button_OnEnter);
+	button:SetScript("OnLeave", ChatBar_Button_OnLeave);
+	button:SetScript("OnClick", ChatBar_Button_OnClick);
+	button:SetScript("OnMouseDown", ChatBar_Button_OnMouseDown);
+	button:SetScript("OnMouseUp", ChatBar_Button_OnMouseUp);
+
+	if (id == 1) then
+		button:SetPoint("LEFT", parent, "LEFT", 10, 0);
+	else
+		button:SetPoint("LEFT", parent:GetName() .. "Button" .. (id - 1), "RIGHT", 0, 0);
+	end
+
+	ChatBar_InitializeButton(button);
+	return button;
+end
+
+function ChatBar_CreateUI()
+	if (ChatBarFrame) then
+		return;
+	end
+
+	local frame = CreateFrame("Frame", "ChatBarFrame", UIParent);
+	frame:EnableMouse(true);
+	frame:SetMovable(true);
+	frame:SetWidth(CHAT_BAR_BUTTON_SIZE);
+	frame:SetHeight(CHAT_BAR_BUTTON_SIZE);
+	frame:SetPoint("BOTTOMLEFT", "ChatFrame1", "TOPLEFT", 0, 30);
+	frame:SetScript("OnEvent", function()
+		ChatBar_OnEvent(event);
+	end);
+	frame:SetScript("OnUpdate", function()
+		ChatBar_OnUpdate(arg1);
+	end);
+	frame:SetScript("OnMouseDown", function()
+		ChatBar_OnMouseDown(arg1);
+	end);
+	frame:SetScript("OnDragStart", ChatBar_OnDragStart);
+	frame:SetScript("OnDragStop", ChatBar_OnDragStop);
+
+	local background = CreateFrame("Frame", frame:GetName() .. "Background", frame);
+	background:SetAllPoints(frame);
+	background:SetBackdrop({
+		edgeFile = "Interface\\AddOns\\ChatBar\\SkinSolid\\ChatBarBorder",
+		bgFile = "Interface\\AddOns\\ChatBar\\SkinSolid\\BlackBg",
+		tile = true,
+		tileSize = 8,
+		edgeSize = 8,
+		insets = { left = 8, right = 8, top = 8, bottom = 8 },
+	});
+
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		ChatBar_CreateButton(frame, i);
+	end
+
+	local tooltip = CreateFrame("GameTooltip", frame:GetName() .. "Tooltip", frame, "GameTooltipTemplate");
+	tooltip:SetFrameStrata("TOOLTIP");
+	tooltip:Hide();
+
+	local dropDown = CreateFrame("Frame", "ChatBar_DropDown", UIParent, "UIDropDownMenuTemplate");
+	dropDown:SetID(1);
+	dropDown:SetWidth(10);
+	dropDown:SetHeight(10);
+	dropDown:SetPoint("TOP", UIParent, "TOP", -10, -50);
+	dropDown:Hide();
+
+	ChatBar_InitializeFrame(frame);
+	ChatBar_InitializeDropDown(dropDown);
+	ChatBar_UpdateButtons();
+end
 
 --------------------------------------------------
 -- Retell Hook
@@ -98,10 +280,11 @@ local SendChatMessage_orig = SendChatMessage;
 function ChatBar_SendChatMessage(text, type, language, target)
 	SendChatMessage_orig(text, type, language, target);
 	-- saves target for 'Retell'
-	if ( type == "WHISPER" ) then
+	if (type == "WHISPER") then
 		ChatBar_LastTell = target;
 	end
 end
+
 SendChatMessage = ChatBar_SendChatMessage;
 
 --------------------------------------------------
@@ -110,7 +293,7 @@ SendChatMessage = ChatBar_SendChatMessage;
 
 function ChatBar_StandardButtonClick(button)
 	local chatFrame = SELECTED_DOCK_FRAME
-	if ( not chatFrame ) then
+	if (not chatFrame) then
 		chatFrame = DEFAULT_CHAT_FRAME;
 	end
 	if (button == "RightButton") then
@@ -129,7 +312,7 @@ end
 
 function ChatBar_WhisperButtonClick(button)
 	local chatFrame = SELECTED_DOCK_FRAME
-	if ( not chatFrame ) then
+	if (not chatFrame) then
 		chatFrame = DEFAULT_CHAT_FRAME;
 	end
 	if (button == "RightButton") then
@@ -154,7 +337,7 @@ function ChatBar_ChannelShortText(index)
 		if (ChatBar_TextChannelNumbers) then
 			return channelNum;
 		else
-			return strsub(channelName,1,1);
+			return strsub(channelName, 1, 1);
 		end
 	end
 end
@@ -162,7 +345,7 @@ end
 function ChatBar_ChannelText(index)
 	local channelNum, channelName = GetChannelName(index);
 	if (channelNum ~= 0) then
-		return channelNum..") "..channelName;
+		return channelNum .. ") " .. channelName;
 	end
 	return "";
 end
@@ -172,7 +355,7 @@ function ChatBar_ChannelClick(button, index)
 		index = 1;
 	end
 	local chatFrame = SELECTED_DOCK_FRAME
-	if ( not chatFrame ) then
+	if (not chatFrame) then
 		chatFrame = DEFAULT_CHAT_FRAME;
 	end
 	if (button == "RightButton") then
@@ -188,7 +371,14 @@ function ChatBar_ChannelClick(button, index)
 			ChatEdit_UpdateHeader(chatFrame.editBox);
 		end
 	end
+end
 
+function ChatBar_RollButtonClick(button)
+	if (button == "RightButton") then
+		ToggleDropDownMenu(1, this.ChatID, ChatBar_DropDown, this:GetName(), 10, 0, "TOPRIGHT");
+	else
+		RandomRoll(1, 100);
+	end
 end
 
 function ChatBar_ChannelShow(index)
@@ -196,8 +386,8 @@ function ChatBar_ChannelShow(index)
 	if (channelNum ~= 0) then
 		if (ChatBar_HideSpecialChannels) then
 			--Special Hidden Whisper Ignores
-			if ( IsAddOnLoaded("Sky") ) then
-				if (string.len(channelName) >= 3) and (string.sub(channelName,1,3) == "Sky") then
+			if (IsAddOnLoaded("Sky")) then
+				if (string.len(channelName) >= 3) and (string.sub(channelName, 1, 3) == "Sky") then
 					--Hide Sky channels
 					return;
 				end
@@ -207,16 +397,16 @@ function ChatBar_ChannelShow(index)
 						return;
 					end
 				end
-			elseif ( IsAddOnLoaded("CallToArms") ) and (channelName == CTA_DEFAULT_RAID_CHANNEL) then
+			elseif (IsAddOnLoaded("CallToArms")) and (channelName == CTA_DEFAULT_RAID_CHANNEL) then
 				--Hide CallToArms channel
 				return;
-			elseif ( IsAddOnLoaded("CT_RaidAssist") ) and (channelName == CT_RA_Channel) then
+			elseif (IsAddOnLoaded("CT_RaidAssist")) and (channelName == CT_RA_Channel) then
 				--Hide CT_RaidAssist channel
 				return;
-			elseif ( IsAddOnLoaded("GuildMap") ) and (GuildMapConfig) and (channelName == GuildMapConfig.channel) then
+			elseif (IsAddOnLoaded("GuildMap")) and (GuildMapConfig) and (channelName == GuildMapConfig.channel) then
 				--Hide GuildMap channel
 				return;
-			elseif ( channelName == "GlobalComm" ) then
+			elseif (channelName == "GlobalComm") then
 				--Hide standard GlobalComm channel (Telepathy, AceComm)
 				return;
 			end
@@ -290,7 +480,8 @@ ChatBar_ChatTypes = {
 		text = function() return CHAT_MSG_RAID_WARNING; end,
 		click = ChatBar_StandardButtonClick,
 		show = function()
-			return (GetNumRaidMembers() > 0) and (IsRaidLeader() or IsRaidOfficer()) and (not ChatBar_HiddenButtons[CHAT_MSG_RAID_WARNING]);
+			return (GetNumRaidMembers() > 0) and (IsRaidLeader() or IsRaidOfficer()) and
+			(not ChatBar_HiddenButtons[CHAT_MSG_RAID_WARNING]);
 		end
 	},
 	{
@@ -299,8 +490,9 @@ ChatBar_ChatTypes = {
 		text = function() return CHAT_MSG_BATTLEGROUND; end,
 		click = ChatBar_StandardButtonClick,
 		show = function()
-		return (GetZoneText() == CHATBAR_WSG or GetZoneText() == CHATBAR_AB or GetZoneText() == CHATBAR_AV) and (not ChatBar_HiddenButtons[CHAT_MSG_BATTLEGROUND]);
-		end	
+			return (GetZoneText() == CHATBAR_WSG or GetZoneText() == CHATBAR_AB or GetZoneText() == CHATBAR_AV) and
+			(not ChatBar_HiddenButtons[CHAT_MSG_BATTLEGROUND]);
+		end
 	},
 	{
 		type = "GUILD",
@@ -389,8 +581,18 @@ ChatBar_ChatTypes = {
 		text = function() return ChatBar_ChannelText(10); end,
 		click = function(button) ChatBar_ChannelClick(button, 10); end,
 		show = function() return ChatBar_ChannelShow(10); end
+	},
+	{
+		type = "ROLL",
+		shortText = function() return CHATBAR_ROLL_ABRV; end,
+		text = function() return CHATBAR_ROLL; end,
+		click = ChatBar_RollButtonClick,
+		show = function()
+			return (not ChatBar_HiddenButtons[CHATBAR_ROLL]);
+		end,
+		colorType = "SYSTEM"
 	}
-	
+
 };
 
 ChatBar_BarTypes = {};
@@ -400,52 +602,37 @@ ChatBar_BarTypes = {};
 --------------------------------------------------
 
 function ChatBar_OnLoad()
-	this:RegisterEvent("UPDATE_CHAT_COLOR");
-	this:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE");
-	this:RegisterEvent("PARTY_MEMBERS_CHANGED");
-	this:RegisterEvent("RAID_ROSTER_UPDATE");
-	this:RegisterEvent("PLAYER_GUILD_UPDATE");
-	this:RegisterEvent("VARIABLES_LOADED");
-	this:RegisterForDrag("LeftButton");
-	this.velocity = 0;
-	if (Eclipse) then
-		--Register with VisibilityOptions
-		Eclipse.registerForVisibility( {
-			name = "ChatBarFrame";	--The name of the config, in this case also the name of the frame
-			uiname = "ChatBar";	--This is the base name of this reg to display in the description and ui
-			slashcom = { "chatbar", "cb" };	--These are the slash commands
-			reqs = { var=ChatBar_ShowIf, val=true, show=true };
-		}	);
-	end
+	ChatBar_InitializeFrame(this);
 end
 
 function ChatBar_ShowIf()
-	return ChatBarFrame.isSliding or ChatBarFrame.isMoving or (type(ChatBarFrame.count)=="number") or ((UIDROPDOWNMENU_OPEN_MENU=="ChatBar_DropDown" and (MouseIsOver(DropDownList1) or (UIDROPDOWNMENU_MENU_LEVEL==2 and MouseIsOver(DropDownList2))))==1);
+	return ChatBarFrame.isSliding or ChatBarFrame.isMoving or (type(ChatBarFrame.count) == "number") or
+	((UIDROPDOWNMENU_OPEN_MENU == "ChatBar_DropDown" and (MouseIsOver(DropDownList1) or (UIDROPDOWNMENU_MENU_LEVEL == 2 and MouseIsOver(DropDownList2)))) == 1);
 end
 
 function ChatBar_OnEvent(event)
-	if ( event == "UPDATE_CHAT_COLOR" ) then
+	if (event == "UPDATE_CHAT_COLOR") then
 		ChatBarFrame.count = 0;
-	elseif ( event == "CHAT_MSG_CHANNEL_NOTICE" ) then
+	elseif (event == "CHAT_MSG_CHANNEL_NOTICE") then
 		ChatBarFrame.count = 0;
-	elseif ( event == "PARTY_MEMBERS_CHANGED" ) then
+	elseif (event == "PARTY_MEMBERS_CHANGED") then
 		ChatBarFrame.count = 0;
-	elseif ( event == "RAID_ROSTER_UPDATE" ) then
+	elseif (event == "RAID_ROSTER_UPDATE") then
 		ChatBarFrame.count = 0;
-	elseif ( event == "PLAYER_GUILD_UPDATE" ) then
+	elseif (event == "PLAYER_GUILD_UPDATE") then
 		ChatBarFrame.count = 0;
-	elseif ( event == "CHAT_MSG_CHANNEL" ) and (type(arg8) == "number") then
-		if (ChatBar_BarTypes["CHANNEL"..arg8]) then
-			UIFrameFlash(getglobal("ChatBarFrameButton"..ChatBar_BarTypes["CHANNEL"..arg8].."Flash"), .5, .5, 1.1);
+	elseif (event == "CHAT_MSG_CHANNEL") and (type(arg8) == "number") then
+		if (ChatBar_BarTypes["CHANNEL" .. arg8]) then
+			UIFrameFlash(getglobal("ChatBarFrameButton" .. ChatBar_BarTypes["CHANNEL" .. arg8] .. "Flash"), .5, .5, 1.1);
 		end
-	elseif ( event == "VARIABLES_LOADED" ) then
+	elseif (event == "VARIABLES_LOADED") then
 		ChatBar_UpdateArt();
 		ChatBar_UpdateButtonOrientation();
 		ChatBar_UpdateButtonSizes();
 		ChatBar_UpdateButtonFlashing();
 		ChatBar_UpdateBarBorder();
 		ChatBar_UpdateButtonText();
-		
+
 		--Update live Stickies
 		for chatType, enabled in ChatBar_StoredStickies do
 			if (enabled) then
@@ -454,19 +641,18 @@ function ChatBar_OnEvent(event)
 		end
 	else
 		--Sea.io.printComma(arg1,arg2,arg3);
-		if (ChatBar_BarTypes[strsub(event,10)]) then
-			UIFrameFlash(getglobal("ChatBarFrameButton"..ChatBar_BarTypes[strsub(event,10)].."Flash"), .5, .5, 1.1);
+		if (ChatBar_BarTypes[strsub(event, 10)]) then
+			UIFrameFlash(getglobal("ChatBarFrameButton" .. ChatBar_BarTypes[strsub(event, 10)] .. "Flash"), .5, .5, 1.1);
 		end
 	end
 end
 
 --ConstantInitialVelocity = 10;
 ConstantVelocityModifier = 1.25;
-ConstantJerk = 3*ConstantVelocityModifier;
+ConstantJerk = 3 * ConstantVelocityModifier;
 ConstantSnapLimit = 2;
 
 function ChatBar_OnUpdate(elapsed)
-	
 	if (this.slidingEnabled) and (this.isSliding) and (this.velocity) and (this.endsize) then
 		local currSize = ChatBar_GetSize();
 		if (math.abs(currSize - this.endsize) < ConstantSnapLimit) then
@@ -493,27 +679,27 @@ function ChatBar_OnUpdate(elapsed)
 			local desiredVelocity = ConstantVelocityModifier * (this.endsize - currSize);
 			this.velocity = (1 - ConstantJerk) * this.velocity + ConstantJerk * desiredVelocity;
 			ChatBar_SetSize(currSize + this.velocity * elapsed);
-			]]--
+			]] --
 			--[[
 			local w = 1 - math.exp(-ConstantJerk* elapsed);
 			this.velocity = (1-w)*this.velocity + w*ConstantVelocityModifier*(this.endsize - currSize);
 			ChatBar_SetSize(currSize + this.velocity * elapsed);
-			]]--
+			]] --
 			--[[ incomplete
-			local totalDistance = this.endsize - this.startsize; 
+			local totalDistance = this.endsize - this.startsize;
 			local distanceFromStart = this.startsize - currSize;
 			local accel = math.cos(distanceFromStart/totalDistance*math.pi) * ConstantJerk;
 			ChatBar_SetSize(currSize + accel * elapsed * elapsed);
-			]]--
+			]] --
 			local desiredVelocity = ConstantVelocityModifier * (this.endsize - currSize);
 			local acceleration = ConstantJerk * (desiredVelocity - this.velocity);
 			this.velocity = this.velocity + acceleration * elapsed;
 			ChatBar_SetSize(currSize + this.velocity * elapsed);
 		end
 		local frame, init, final, step;
-		for i=1, CHAT_BAR_MAX_BUTTONS do
-			frame = getglobal("ChatBarFrameButton".. i);
-			if (currSize >= i*(CHAT_BAR_BUTTON_SIZE*ChatBar_ButtonScale)+18) then
+		for i = 1, CHAT_BAR_MAX_BUTTONS do
+			frame = getglobal("ChatBarFrameButton" .. i);
+			if (currSize >= i * (CHAT_BAR_BUTTON_SIZE * ChatBar_ButtonScale) + 18) then
 				frame:Show();
 			else
 				frame:Hide();
@@ -525,10 +711,9 @@ function ChatBar_OnUpdate(elapsed)
 			ChatBarFrame.slidingEnabled = true;
 			ChatBar_UpdateButtons();
 		else
-			this.count = this.count+1;
+			this.count = this.count + 1;
 		end
 	end
-	
 end
 
 function ChatBar_GetSize()
@@ -548,17 +733,7 @@ function ChatBar_SetSize(size)
 end
 
 function ChatBar_Button_OnLoad()
-	this.Text = getglobal("ChatBarFrameButton"..this:GetID().."Text");
-	this.ChatID = this:GetID();
-
-	getglobal(this:GetName().."Highlight"):SetAlpha(.75);
-	getglobal(this:GetName().."UpTex_Spec"):SetAlpha(.75);
-	getglobal(this:GetName().."UpTex_Shad"):SetAlpha(.75);
-	--getglobal(this:GetName().."DownTex_Spec"):SetAlpha(1);
-	getglobal(this:GetName().."DownTex_Shad"):SetAlpha(1);
-	
-	this:SetFrameLevel(this:GetFrameLevel()+1);
-	this:RegisterForClicks("LeftButtonDown", "RightButtonDown");
+	ChatBar_InitializeButton(this);
 end
 
 function ChatBar_Button_OnClick()
@@ -593,7 +768,7 @@ function ChatBar_OnDragStart()
 	if (not this.isSliding) then
 		local x, y = GetCursorPosition();
 		this:ClearAllPoints();
-		this:SetPoint("BOTTOMLEFT", "UIParent", "BOTTOMLEFT", x-this.xOffset, y-this.yOffset);
+		this:SetPoint("BOTTOMLEFT", "UIParent", "BOTTOMLEFT", x - this.xOffset, y - this.yOffset);
 		this:StartMoving();
 		this.isMoving = true;
 	end
@@ -610,14 +785,14 @@ end
 --------------------------------------------------
 
 function ChatBar_DropDownOnLoad()
-	UIDropDownMenu_Initialize(this, ChatBar_LoadDropDownMenu, "MENU");
+	ChatBar_InitializeDropDown(this);
 end
 
 function ChatBar_LoadDropDownMenu()
 	if (not UIDROPDOWNMENU_MENU_VALUE) then
 		return;
 	end
-	
+
 	if (UIDROPDOWNMENU_MENU_VALUE == "ChatBarMenu") then
 		ChatBar_CreateFrameMenu();
 	elseif (UIDROPDOWNMENU_MENU_VALUE == "HiddenButtonsMenu") then
@@ -627,7 +802,6 @@ function ChatBar_LoadDropDownMenu()
 	else
 		ChatBar_CreateButtonMenu();
 	end
-	
 end
 
 function ChatBar_CreateFrameMenu()
@@ -637,7 +811,7 @@ function ChatBar_CreateFrameMenu()
 	info.notClickable = 1;
 	info.isTitle = 1;
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Large Buttons
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_LARGE;
@@ -655,7 +829,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Alt Button
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_REVERSE;
@@ -664,7 +838,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Alt Art
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_ALTART;
@@ -681,7 +855,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Show Button Text
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_SHOWTEXT;
@@ -691,7 +865,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Use Channel ID on Buttons
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_CHANNELID;
@@ -701,7 +875,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Button Flashing
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_BUTTONFLASHING;
@@ -721,7 +895,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Hide Special
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_ADDONCHANNELS;
@@ -730,7 +904,7 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Hide All
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_HIDEALL;
@@ -743,7 +917,7 @@ function ChatBar_CreateFrameMenu()
 	local size = 0;
 	for _, v in pairs(ChatBar_HiddenButtons) do
 		if (v) then
-			size = size+1
+			size = size + 1
 		end
 	end
 	if (size > 0) then
@@ -755,7 +929,7 @@ function ChatBar_CreateFrameMenu()
 		info.value = "HiddenButtonsMenu";
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 	end
-	
+
 	--Reset Position
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_RESET;
@@ -764,12 +938,12 @@ function ChatBar_CreateFrameMenu()
 		info.checked = 1;
 	end
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	--Reorder Channels
 	local info = {};
 	info.text = CHATBAR_MENU_MAIN_REORDER;
 	if (not Chronos) then
-		info.text = info.text..CHATBAR_MENU_MAIN_REQCHRONOS
+		info.text = info.text .. CHATBAR_MENU_MAIN_REQCHRONOS
 		info.disabled = 1;
 	end
 	info.func = ChatBar_ReorderChannels;
@@ -777,24 +951,29 @@ function ChatBar_CreateFrameMenu()
 end
 
 function ChatBar_CreateHiddenButtonsMenu()
-	for k,v in ChatBar_HiddenButtons do
+	for k, v in ChatBar_HiddenButtons do
 		--Show Button
 		local info = {};
 		info.text = format(CHATBAR_MENU_SHOW_BUTTON, k);
 		local ctype = k;
-		info.func = function() ChatBar_HiddenButtons[ctype]=nil ChatBarFrame.count = 0; end;
+		info.func = function()
+			ChatBar_HiddenButtons[ctype] = nil
+			ChatBarFrame.count = 0;
+		end;
 		info.notCheckable = 1;
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 	end
 end
 
 function ChatBar_CreateAltArtMenu()
-	for k,v in pairs(ChatBar_AltArtDirs) do
+	for k, v in pairs(ChatBar_AltArtDirs) do
 		--Show Button
 		local info = {};
-		info.text = getglobal("CHATBAR_SKIN"..k);
+		info.text = getglobal("CHATBAR_SKIN" .. k);
 		local skinIndex = k;
-		info.func = function() ChatBar_AltArt=skinIndex; ChatBar_UpdateArt(); end;
+		info.func = function()
+			ChatBar_AltArt = skinIndex; ChatBar_UpdateArt();
+		end;
 		if (ChatBar_AltArt == k) then
 			info.checked = 1;
 		end
@@ -803,15 +982,16 @@ function ChatBar_CreateAltArtMenu()
 end
 
 function ChatBar_CreateButtonMenu()
-	local buttonHeader = ChatBar_ChatTypes[UIDROPDOWNMENU_MENU_VALUE].type;
-	
+	local buttonInfo = ChatBar_ChatTypes[UIDROPDOWNMENU_MENU_VALUE];
+	local buttonHeader = buttonInfo.type;
+
 	--Title
 	local info = {};
-	info.text = ChatBar_ChatTypes[UIDROPDOWNMENU_MENU_VALUE].text();
+	info.text = buttonInfo.text();
 	info.notClickable = 1;
 	info.isTitle = 1;
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-	
+
 	local chatType, channelIndex = string.gfind(buttonHeader, "([^%d]*)([%d]+)$")();
 	if (channelIndex) then
 		local channelNum, channelName = GetChannelName(tonumber(channelIndex));
@@ -826,28 +1006,32 @@ function ChatBar_CreateButtonMenu()
 		info.text = CHATBAR_MENU_CHANNEL_LIST;
 		info.func = function() ListChannelByName(channelNum) end;
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-		
+
 		--Hide Button
 		local channelShortName = ChatBar_GetFirstWord(channelName);
 		local info = {};
 		info.text = format(CHATBAR_MENU_HIDE_BUTTON, channelShortName);
-		info.func = function() ChatBar_HiddenButtons[channelShortName]=true; ChatBarFrame.count = 0; end;
+		info.func = function()
+			ChatBar_HiddenButtons[channelShortName] = true; ChatBarFrame.count = 0;
+		end;
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 	else
 		--Hide Button
 		local info = {};
-		local localizedChatType = ChatBar_ChatTypes[UIDROPDOWNMENU_MENU_VALUE].text()
+		local localizedChatType = buttonInfo.text()
 		info.text = format(CHATBAR_MENU_HIDE_BUTTON, localizedChatType);
-		info.func = function() ChatBar_HiddenButtons[localizedChatType]=true; ChatBarFrame.count = 0; end;
+		info.func = function()
+			ChatBar_HiddenButtons[localizedChatType] = true; ChatBarFrame.count = 0;
+		end;
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 	end
-	
+
 	if (buttonHeader == "WHISPER") then
 		local chatFrame = SELECTED_DOCK_FRAME
-		if ( not chatFrame ) then
+		if (not chatFrame) then
 			chatFrame = DEFAULT_CHAT_FRAME;
 		end
-		
+
 		--Reply
 		local info = {};
 		info.text = CHATBAR_MENU_WHISPER_REPLY;
@@ -858,7 +1042,7 @@ function ChatBar_CreateButtonMenu()
 			info.disabled = 1;
 		end
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
-		
+
 		--Retell
 		local info = {};
 		info.text = CHATBAR_MENU_WHISPER_RETELL;
@@ -870,32 +1054,30 @@ function ChatBar_CreateButtonMenu()
 		end
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 	end
-	
-	--Sticky
-	local info = {};
-	if (chatType) then
-		info.text = CHATBAR_MENU_CHANNEL_STICKY;
-	else
-		info.text = CHATBAR_MENU_STICKY;
-		chatType = buttonHeader;
-	end
-	info.func = function()
-		if (ChatTypeInfo[chatType].sticky == 1) then
-			ChatTypeInfo[chatType].sticky = 0;
-			ChatBar_StoredStickies[chatType] = 0;
-		else
-			ChatTypeInfo[chatType].sticky = 1;
-			ChatBar_StoredStickies[chatType] = 1;
-		end
-	end;
-	if (ChatTypeInfo[chatType].sticky == 1) then
-		info.checked = 1;
-	end
-	if (not ChatTypeInfo[chatType]) then
-		info.disabled = 1;
-	end
-	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 
+	--Sticky
+	if (chatType or ChatTypeInfo[buttonHeader]) then
+		local info = {};
+		if (chatType) then
+			info.text = CHATBAR_MENU_CHANNEL_STICKY;
+		else
+			info.text = CHATBAR_MENU_STICKY;
+			chatType = buttonHeader;
+		end
+		info.func = function()
+			if (ChatTypeInfo[chatType].sticky == 1) then
+				ChatTypeInfo[chatType].sticky = 0;
+				ChatBar_StoredStickies[chatType] = 0;
+			else
+				ChatTypeInfo[chatType].sticky = 1;
+				ChatBar_StoredStickies[chatType] = 1;
+			end
+		end;
+		if (ChatTypeInfo[chatType].sticky == 1) then
+			info.checked = 1;
+		end
+		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
+	end
 end
 
 --------------------------------------------------
@@ -903,27 +1085,27 @@ end
 --------------------------------------------------
 
 function ChatBar_UpdateButtons()
-	
 	ChatBar_BarTypes = {};
 	local i = 1;
 	local buttonIndex = 1;
 	if (not ChatBar_HideAllButtons) then
 		while (ChatBar_ChatTypes[i]) and (buttonIndex <= CHAT_BAR_MAX_BUTTONS) do
 			if (ChatBar_ChatTypes[i].show()) then
-				local info=ChatTypeInfo[ChatBar_ChatTypes[i].type];
+				local chatTypeInfo = ChatBar_ChatTypes[i];
+				local info = ChatTypeInfo[chatTypeInfo.type] or ChatTypeInfo[chatTypeInfo.colorType] or ChatTypeInfo["SYSTEM"];
 				ChatBar_BarTypes[ChatBar_ChatTypes[i].type] = buttonIndex;
-				getglobal("ChatBarFrameButton".. buttonIndex.."Highlight"):SetVertexColor(info.r, info.g, info.b);
-				getglobal("ChatBarFrameButton".. buttonIndex.."Flash"):SetVertexColor(info.r, info.g, info.b);
-				getglobal("ChatBarFrameButton".. buttonIndex.."Center"):SetVertexColor(info.r, info.g, info.b);
-				getglobal("ChatBarFrameButton".. buttonIndex.."Text"):SetText(ChatBar_ChatTypes[i].shortText());
-				getglobal("ChatBarFrameButton".. buttonIndex).ChatID = i;
+				getglobal("ChatBarFrameButton" .. buttonIndex .. "Highlight"):SetVertexColor(info.r, info.g, info.b);
+				getglobal("ChatBarFrameButton" .. buttonIndex .. "Flash"):SetVertexColor(info.r, info.g, info.b);
+				getglobal("ChatBarFrameButton" .. buttonIndex .. "Center"):SetVertexColor(info.r, info.g, info.b);
+				getglobal("ChatBarFrameButton" .. buttonIndex .. "Text"):SetText(ChatBar_FormatButtonText(ChatBar_ChatTypes[i].shortText()));
+				getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = i;
 				--getglobal("ChatBarFrameButton".. buttonIndex):Show();
-				buttonIndex = buttonIndex+1;
+				buttonIndex = buttonIndex + 1;
 			end
-			i = i+1;
+			i = i + 1;
 		end
 	end
-	local size = (buttonIndex-1)*(CHAT_BAR_BUTTON_SIZE*ChatBar_ButtonScale)+20;
+	local size = (buttonIndex - 1) * (CHAT_BAR_BUTTON_SIZE * ChatBar_ButtonScale) + 20;
 	if (ChatBar_VerticalDisplay) then
 		ChatBarFrame:SetWidth(CHAT_BAR_BUTTON_SIZE);
 		if (ChatBarFrame:GetTop()) then
@@ -945,10 +1127,9 @@ function ChatBar_UpdateButtons()
 	end
 	while (buttonIndex <= CHAT_BAR_MAX_BUTTONS) do
 		--getglobal("ChatBarFrameButton".. buttonIndex):Hide();
-		getglobal("ChatBarFrameButton".. buttonIndex).ChatID = nil;
-		buttonIndex = buttonIndex+1;
+		getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = nil;
+		buttonIndex = buttonIndex + 1;
 	end
-
 end
 
 function ChatBar_StartSlidingTo(size)
@@ -958,10 +1139,9 @@ end
 
 function ChatBar_UpdateButtonSizes()
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
-		getglobal("ChatBarFrameButton"..i):SetScale(ChatBar_ButtonScale);
+		getglobal("ChatBarFrameButton" .. i):SetScale(ChatBar_ButtonScale);
 	end
 end
-
 
 function ChatBar_UpdateButtonOrientation()
 	local button = ChatBarFrameButton1;
@@ -969,9 +1149,9 @@ function ChatBar_UpdateButtonOrientation()
 	button.Text:ClearAllPoints();
 	if (ChatBar_VerticalDisplay) then
 		if (ChatBar_AlternateOrientation) then
-			button:SetPoint("TOP", "ChatBarFrame", "TOP", 0, (-CHAT_BAR_EDGE_SIZE/ChatBar_ButtonScale));
+			button:SetPoint("TOP", "ChatBarFrame", "TOP", 0, (-CHAT_BAR_EDGE_SIZE / ChatBar_ButtonScale));
 		else
-			button:SetPoint("BOTTOM", "ChatBarFrame", "BOTTOM", 0, (CHAT_BAR_EDGE_SIZE/ChatBar_ButtonScale));
+			button:SetPoint("BOTTOM", "ChatBarFrame", "BOTTOM", 0, (CHAT_BAR_EDGE_SIZE / ChatBar_ButtonScale));
 		end
 		if (ChatBar_TextOnButtonDisplay) then
 			button.Text:SetPoint("CENTER", button);
@@ -980,9 +1160,9 @@ function ChatBar_UpdateButtonOrientation()
 		end
 	else
 		if (ChatBar_AlternateOrientation) then
-			button:SetPoint("RIGHT", "ChatBarFrame", "RIGHT", (-CHAT_BAR_EDGE_SIZE/ChatBar_ButtonScale), 0);
+			button:SetPoint("RIGHT", "ChatBarFrame", "RIGHT", (-CHAT_BAR_EDGE_SIZE / ChatBar_ButtonScale), 0);
 		else
-			button:SetPoint("LEFT", "ChatBarFrame", "LEFT", (CHAT_BAR_EDGE_SIZE/ChatBar_ButtonScale), 0);
+			button:SetPoint("LEFT", "ChatBarFrame", "LEFT", (CHAT_BAR_EDGE_SIZE / ChatBar_ButtonScale), 0);
 		end
 		if (ChatBar_TextOnButtonDisplay) then
 			button.Text:SetPoint("CENTER", button);
@@ -990,15 +1170,15 @@ function ChatBar_UpdateButtonOrientation()
 			button.Text:SetPoint("BOTTOM", button, "TOP");
 		end
 	end
-	for i=2, CHAT_BAR_MAX_BUTTONS do
-		button = getglobal("ChatBarFrameButton"..i);
+	for i = 2, CHAT_BAR_MAX_BUTTONS do
+		button = getglobal("ChatBarFrameButton" .. i);
 		button:ClearAllPoints();
 		button.Text:ClearAllPoints();
 		if (ChatBar_VerticalDisplay) then
 			if (ChatBar_AlternateOrientation) then
-				button:SetPoint("TOP", "ChatBarFrameButton"..(i-1), "BOTTOM");
+				button:SetPoint("TOP", "ChatBarFrameButton" .. (i - 1), "BOTTOM");
 			else
-				button:SetPoint("BOTTOM", "ChatBarFrameButton"..(i-1), "TOP");
+				button:SetPoint("BOTTOM", "ChatBarFrameButton" .. (i - 1), "TOP");
 			end
 			if (ChatBar_TextOnButtonDisplay) then
 				button.Text:SetPoint("CENTER", button);
@@ -1007,9 +1187,9 @@ function ChatBar_UpdateButtonOrientation()
 			end
 		else
 			if (ChatBar_AlternateOrientation) then
-				button:SetPoint("RIGHT", "ChatBarFrameButton"..(i-1), "LEFT");
+				button:SetPoint("RIGHT", "ChatBarFrameButton" .. (i - 1), "LEFT");
 			else
-				button:SetPoint("LEFT", "ChatBarFrameButton"..(i-1), "RIGHT");
+				button:SetPoint("LEFT", "ChatBarFrameButton" .. (i - 1), "RIGHT");
 			end
 			if (ChatBar_TextOnButtonDisplay) then
 				button.Text:SetPoint("CENTER", button);
@@ -1050,7 +1230,7 @@ function ChatBar_UpdateButtonFlashing()
 end
 
 function ChatBar_UpdateBarBorder()
-	if (ChatBar_BarBorder) then
+	if (ChatBar_BarBorder and not ChatBar_IsTextOnlyArt()) then
 		ChatBarFrameBackground:Show();
 	else
 		ChatBarFrameBackground:Hide();
@@ -1067,27 +1247,53 @@ function ChatBar_UpdateArt()
 	if type(ChatBar_AltArt) == "boolean" or ChatBar_AltArt == nil or not ChatBar_AltArtDirs[ChatBar_AltArt] then
 		ChatBar_AltArt = 1;
 	end
-	local dir = ChatBar_AltArtDirs[ChatBar_AltArt]
-	
-	for i=1, 20 do
-		getglobal("ChatBarFrameButton"..i.."UpTex_Spec"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Up_Spec");
-		getglobal("ChatBarFrameButton"..i.."DownTex_Spec"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Down_Spec");
-		getglobal("ChatBarFrameButton"..i.."Flash"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Glow_Alpha");
-		
-		getglobal("ChatBarFrameButton"..i.."Center"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Center");
-		getglobal("ChatBarFrameButton"..i.."Background"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_BG");
-		
-		getglobal("ChatBarFrameButton"..i.."UpTex_Shad"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Up_Shad");
-		getglobal("ChatBarFrameButton"..i.."DownTex_Shad"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Down_Shad");
-		getglobal("ChatBarFrameButton"..i.."Highlight"):SetTexture("Interface\\AddOns\\ChatBar\\"..dir.."\\ChanButton_Glow_Alpha");
+	local dir = ChatBar_AltArtDirs[ChatBar_AltArt];
+	local textOnly = ChatBar_IsTextOnlyArt();
+
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		local upTexSpec = getglobal("ChatBarFrameButton" .. i .. "UpTex_Spec");
+		local downTexSpec = getglobal("ChatBarFrameButton" .. i .. "DownTex_Spec");
+		local flash = getglobal("ChatBarFrameButton" .. i .. "Flash");
+		local center = getglobal("ChatBarFrameButton" .. i .. "Center");
+		local background = getglobal("ChatBarFrameButton" .. i .. "Background");
+		local upTexShad = getglobal("ChatBarFrameButton" .. i .. "UpTex_Shad");
+		local downTexShad = getglobal("ChatBarFrameButton" .. i .. "DownTex_Shad");
+		local highlight = getglobal("ChatBarFrameButton" .. i .. "Highlight");
+
+		if (not textOnly) then
+			upTexSpec:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Up_Spec");
+			downTexSpec:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Down_Spec");
+			flash:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Glow_Alpha");
+			center:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Center");
+			background:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_BG");
+			upTexShad:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Up_Shad");
+			downTexShad:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Down_Shad");
+			highlight:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Glow_Alpha");
+		end
+
+		upTexSpec:SetAlpha(textOnly and 0 or .75);
+		downTexSpec:SetAlpha(textOnly and 0 or 1);
+		flash:SetAlpha(textOnly and 0 or 1);
+		center:SetAlpha(textOnly and 0 or 1);
+		background:SetAlpha(textOnly and 0 or 1);
+		upTexShad:SetAlpha(textOnly and 0 or .75);
+		downTexShad:SetAlpha(textOnly and 0 or 1);
+		highlight:SetAlpha(textOnly and 0 or .75);
 	end
-	
-	ChatBarFrameBackground:SetBackdrop({
-		edgeFile = "Interface\\AddOns\\ChatBar\\"..dir.."\\ChatBarBorder";
-		bgFile = "Interface\\AddOns\\ChatBar\\"..dir.."\\BlackBg";
-		tile = true, tileSize = 8, edgeSize = 8;
-		insets = { left = 8, right = 8, top = 8, bottom = 8 };
-	});
+
+	if (not textOnly) then
+		ChatBarFrameBackground:SetBackdrop({
+			edgeFile = "Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChatBarBorder",
+			bgFile = "Interface\\AddOns\\ChatBar\\" .. dir .. "\\BlackBg",
+			tile = true,
+			tileSize = 8,
+			edgeSize = 8,
+			insets = { left = 8, right = 8, top = 8, bottom = 8 },
+		});
+	end
+
+	ChatBar_UpdateBarBorder();
+	ChatBar_UpdateButtonText();
 end
 
 --------------------------------------------------
@@ -1150,13 +1356,13 @@ function ChatBar_UpdateOrientationPoint(expanded)
 			end
 		else
 			if (ChatBar_AlternateOrientation) then
-				x = ChatBarFrame:GetLeft()+CHAT_BAR_BUTTON_SIZE;
-				y = ChatBarFrame:GetBottom()+CHAT_BAR_BUTTON_SIZE;
+				x = ChatBarFrame:GetLeft() + CHAT_BAR_BUTTON_SIZE;
+				y = ChatBarFrame:GetBottom() + CHAT_BAR_BUTTON_SIZE;
 				ChatBarFrame:ClearAllPoints();
 				ChatBarFrame:SetPoint("TOPRIGHT", "UIParent", "BOTTOMLEFT", x, y);
 			else
-				x = ChatBarFrame:GetRight()-CHAT_BAR_BUTTON_SIZE;
-				y = ChatBarFrame:GetTop()-CHAT_BAR_BUTTON_SIZE;
+				x = ChatBarFrame:GetRight() - CHAT_BAR_BUTTON_SIZE;
+				y = ChatBarFrame:GetTop() - CHAT_BAR_BUTTON_SIZE;
 				ChatBarFrame:ClearAllPoints();
 				ChatBarFrame:SetPoint("BOTTOMLEFT", "UIParent", "BOTTOMLEFT", x, y);
 			end
@@ -1205,14 +1411,14 @@ function ChatBar_Toggle_HideAllButtons()
 end
 
 function ChatBar_UpdateButtonText()
-	if (ChatBar_ButtonText) then
-		for i=1, CHAT_BAR_MAX_BUTTONS do
-			local button = getglobal("ChatBarFrameButton"..i);
+	if (ChatBar_ButtonText or ChatBar_IsTextOnlyArt()) then
+		for i = 1, CHAT_BAR_MAX_BUTTONS do
+			local button = getglobal("ChatBarFrameButton" .. i);
 			button.Text:Show();
 		end
 	else
-		for i=1, CHAT_BAR_MAX_BUTTONS do
-			local button = getglobal("ChatBarFrameButton"..i);
+		for i = 1, CHAT_BAR_MAX_BUTTONS do
+			local button = getglobal("ChatBarFrameButton" .. i);
 			button.Text:Hide();
 		end
 	end
@@ -1290,24 +1496,24 @@ function ChatBar_ReorderChannels()
 		-- For some reason channels do not register join/leave in a reasonable amount of time while in transit.
 		return;
 	end
-	
+
 	local newChannelOrder = {};
 	local openChannelIndex = 1;
 	local currIdentifier, simpleName, inGlobalComm, _;
-	
+
 	--Get Channel List
-	local list = {GetChannelList()};
+	local list = { GetChannelList() };
 	local currChannelList = {};
-	for i=1, getn(list), 2 do
-		table.insert(currChannelList, tonumber(list[i]), list[i+1]);
+	for i = 1, getn(list), 2 do
+		table.insert(currChannelList, tonumber(list[i]), list[i + 1]);
 	end
-	
+
 	-- Find current standard channels: store and leave
 	for index, chanName in currChannelList do
 		if (type(chanName) == "string") then
 			_, _, simpleName = strfind(chanName, "(%w+).*");
 			if (STANDARD_CHANNEL_ORDER[simpleName]) then
-				if ( simpleName == "GlobalComm" ) then 
+				if (simpleName == "GlobalComm") then
 					inGlobalComm = true;
 				else
 					newChannelOrder[STANDARD_CHANNEL_ORDER[simpleName]] = simpleName;
@@ -1329,27 +1535,26 @@ function ChatBar_ReorderChannels()
 			openChannelIndex = openChannelIndex + 1;
 		end
 	end
-	
+
 	if (inGlobalComm) then
 		while (newChannelOrder[openChannelIndex]) do
 			openChannelIndex = openChannelIndex + 1;
 		end
 		newChannelOrder[openChannelIndex] = "GlobalComm";
 	end
-	
+
 	--Sea.io.printTable(newChannelOrder);
 	print(CHATBAR_REORDER_START);
 	Chronos.schedule(.6, ChatBar_joinChannelsInOrder, newChannelOrder);
-	Chronos.schedule(1.2, function() print(CHATBAR_REORDER_END); end );
-	Chronos.schedule(2, ListChannels );
+	Chronos.schedule(1.2, function() print(CHATBAR_REORDER_END); end);
+	Chronos.schedule(2, ListChannels);
 end
 
 function ChatBar_joinChannelsInOrder(newChannelOrder)
-	
 	local inACity = CHATBAR_CAPITAL_CITIES[GetRealZoneText()];
-	
+
 	-- Join channels in new order
-	for i=1, 10 do
+	for i = 1, 10 do
 		if (newChannelOrder[i]) then
 			if (ChannelManager_CustomChannelPasswords) and (ChannelManager_CustomChannelPasswords[newChannelOrder[i]]) then
 				JoinChannelByName(newChannelOrder[i], ChannelManager_CustomChannelPasswords[newChannelOrder[i]]);
@@ -1363,16 +1568,16 @@ function ChatBar_joinChannelsInOrder(newChannelOrder)
 			end
 		end
 	end
-	Chronos.schedule(.6, ChatBar_leaveExtraChannels, newChannelOrder );
+	Chronos.schedule(.6, ChatBar_leaveExtraChannels, newChannelOrder);
 end
 
 function ChatBar_leaveExtraChannels(newChannelOrder)
-	
 	for i, bogusName in BOGUS_CHANNELS do
 		local channelNum, channelName = GetChannelName(bogusName);
 		if (channelName) then
 			LeaveChannelByName(channelNum);
 		end
 	end
-
 end
+
+ChatBar_CreateUI();
