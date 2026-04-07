@@ -1267,6 +1267,10 @@ function ChatBar_UpdateArt()
 	end
 	local dir = ChatBar_AltArtDirs[ChatBar_AltArt];
 	local textOnly = ChatBar_IsTextOnlyArt();
+	if (textOnly) then
+		ChatBar_TextOnButtonDisplay = true;
+		ChatBar_ButtonText = true;
+	end
 
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
 		local upTexSpec = getglobal("ChatBarFrameButton" .. i .. "UpTex_Spec");
@@ -1310,6 +1314,7 @@ function ChatBar_UpdateArt()
 		});
 	end
 
+	ChatBar_UpdateButtonOrientation();
 	ChatBar_UpdateBarBorder();
 	ChatBar_UpdateButtonText();
 end
