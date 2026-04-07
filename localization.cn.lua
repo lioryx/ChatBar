@@ -18,6 +18,7 @@ if (GetLocale() == "zhCN") then
 	CHATBAR_ROLL_ABRV                = "R";
 
 	CHATBAR_MENU_MAIN_TITLE          = "ChatBar 选项";
+	CHATBAR_MENU_MAIN_LARGE          = "放大按钮";
 	CHATBAR_MENU_MAIN_VERTICAL       = "垂直排列";
 	CHATBAR_MENU_MAIN_REVERSE        = "反向按钮顺序";
 	CHATBAR_MENU_MAIN_ALTART         = "使用增强型外观";

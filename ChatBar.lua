@@ -94,9 +94,27 @@ local function ChatBar_IsTextOnlyArt()
 	return ChatBar_AltArtDirs[ChatBar_AltArt] == "TextOnly";
 end
 
+local function ChatBar_GetFirstCharacter(text)
+	if (type(text) ~= "string") or (text == "") then
+		return text;
+	end
+
+	local firstByte = string.byte(text, 1);
+	local byteCount = 1;
+	if (firstByte >= 240) then
+		byteCount = 4;
+	elseif (firstByte >= 224) then
+		byteCount = 3;
+	elseif (firstByte >= 192) then
+		byteCount = 2;
+	end
+
+	return string.sub(text, 1, byteCount);
+end
+
 local function ChatBar_FormatButtonText(text)
 	if (ChatBar_IsTextOnlyArt() and type(text) == "string") then
-		return string.upper(strsub(text, 1, 1)) .. strsub(text, 2);
+		return string.upper(text);
 	end
 	return text;
 end
@@ -337,7 +355,7 @@ function ChatBar_ChannelShortText(index)
 		if (ChatBar_TextChannelNumbers) then
 			return channelNum;
 		else
-			return strsub(channelName, 1, 1);
+			return ChatBar_GetFirstCharacter(channelName);
 		end
 	end
 end
