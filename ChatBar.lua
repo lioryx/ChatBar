@@ -119,6 +119,28 @@ local function ChatBar_FormatButtonText(text)
 	return text;
 end
 
+local function ChatBar_UpdateButtonTextColors()
+	local defaultR, defaultG, defaultB = 1, .82, 0;
+	if (NORMAL_FONT_COLOR) then
+		defaultR = NORMAL_FONT_COLOR.r;
+		defaultG = NORMAL_FONT_COLOR.g;
+		defaultB = NORMAL_FONT_COLOR.b;
+	end
+
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		local button = getglobal("ChatBarFrameButton" .. i);
+		local text = getglobal("ChatBarFrameButton" .. i .. "Text");
+		local chatTypeInfo = button and button.ChatID and ChatBar_ChatTypes[button.ChatID];
+		local colorInfo = chatTypeInfo and (ChatTypeInfo[chatTypeInfo.type] or ChatTypeInfo[chatTypeInfo.colorType] or ChatTypeInfo["SYSTEM"]);
+
+		if (ChatBar_IsTextOnlyArt() and colorInfo) then
+			text:SetTextColor(colorInfo.r, colorInfo.g, colorInfo.b);
+		else
+			text:SetTextColor(defaultR, defaultG, defaultB);
+		end
+	end
+end
+
 --------------------------------------------------
 -- UI Creation
 --------------------------------------------------
@@ -1148,6 +1170,7 @@ function ChatBar_UpdateButtons()
 		getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = nil;
 		buttonIndex = buttonIndex + 1;
 	end
+	ChatBar_UpdateButtonTextColors();
 end
 
 function ChatBar_StartSlidingTo(size)
@@ -1317,6 +1340,7 @@ function ChatBar_UpdateArt()
 	ChatBar_UpdateButtonOrientation();
 	ChatBar_UpdateBarBorder();
 	ChatBar_UpdateButtonText();
+	ChatBar_UpdateButtonTextColors();
 end
 
 --------------------------------------------------
