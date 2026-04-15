@@ -66,7 +66,7 @@ o - Buttons, colored the color of a chat type, left click to open editbox of tha
 
 ### Button / ChatType Options:
 * Leave (Channel)
-v Print Channel User List - List prints to the default chat frame. Same as "/list #"
+* Print Channel User List - List prints to the default chat frame. Same as "/list #"
 * Hide This Button - Hide the button for that chat type or channel by name.
 * Reply (Whisper) - Open whisper to the last person that whispered you.
 * Retell (Whisper) - Open whisper to the last person you whispered.
