@@ -61,6 +61,7 @@ if (GetLocale() == "esES") then
 	CHATBAR_SKIN1                    = "Solid";
 	CHATBAR_SKIN2                    = "Squares";
 	CHATBAR_SKIN3                    = "Text Only";
+	CHATBAR_SKIN4                    = "Octagon";
 
 	-- Zones
 	CHATBAR_WSG                      = "Garganta Grito de Guerra";

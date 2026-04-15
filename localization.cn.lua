@@ -67,6 +67,7 @@ if (GetLocale() == "zhCN") then
 	CHATBAR_SKIN1                    = "实心";
 	CHATBAR_SKIN2                    = "方块";
 	CHATBAR_SKIN3                    = "纯文字";
+	CHATBAR_SKIN4                    = "八边形";
 
 	-- Zones
 	CHATBAR_WSG                      = "战歌峡谷";

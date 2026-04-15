@@ -72,6 +72,7 @@ if (GetLocale() == "zhTW") then
 	CHATBAR_SKIN1                       = "實心";
 	CHATBAR_SKIN2                       = "方塊";
 	CHATBAR_SKIN3                       = "純文字";
+	CHATBAR_SKIN4                       = "八角形";
 
 	-- Bindings
 	BINDING_HEADER_CHATBAR_HEADER       = "頻道按鈕";

@@ -64,6 +64,7 @@ CHATBAR_ROLL                     = "Roll 1-100";
 CHATBAR_SKIN1                    = "Solid";
 CHATBAR_SKIN2                    = "Squares";
 CHATBAR_SKIN3                    = "Text Only";
+CHATBAR_SKIN4                    = "Octagon";
 
 -- Zones
 CHATBAR_WSG                      = "Warsong Gulch";

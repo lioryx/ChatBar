@@ -87,11 +87,23 @@ ChatBar_HideSpecialChannels = true;
 ChatBar_LastTell = nil;
 ChatBar_StoredStickies = {};
 ChatBar_HiddenButtons = {};
-ChatBar_AltArtDirs = { "SkinSolid", "SkinSquares", "TextOnly" };
+ChatBar_AltArtDirs = { "SkinSolid", "SkinSquares", "TextOnly", "SkinOctagon" };
 ChatBar_ButtonScale = 1;
 
 local function ChatBar_IsTextOnlyArt()
 	return ChatBar_AltArtDirs[ChatBar_AltArt] == "TextOnly";
+end
+
+local function ChatBar_IsOctagonArt()
+	return ChatBar_AltArtDirs[ChatBar_AltArt] == "SkinOctagon";
+end
+
+local function ChatBar_ShouldCenterButtonText()
+	return ChatBar_TextOnButtonDisplay or ChatBar_IsTextOnlyArt() or ChatBar_IsOctagonArt();
+end
+
+local function ChatBar_ShouldShowButtonText()
+	return ChatBar_ButtonText or ChatBar_IsTextOnlyArt() or ChatBar_IsOctagonArt();
 end
 
 local function ChatBar_GetFirstCharacter(text)
@@ -113,10 +125,58 @@ local function ChatBar_GetFirstCharacter(text)
 end
 
 local function ChatBar_FormatButtonText(text)
-	if (ChatBar_IsTextOnlyArt() and type(text) == "string") then
+	if (type(text) == "string") then
 		return string.upper(text);
 	end
 	return text;
+end
+
+local function ChatBar_GetButtonCenterTexturePath()
+	local dir = ChatBar_AltArtDirs[ChatBar_AltArt] or ChatBar_AltArtDirs[1];
+	return "Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Center";
+end
+
+local function ChatBar_UpdateButtonFace(buttonIndex)
+	local button = getglobal("ChatBarFrameButton" .. buttonIndex);
+	local text = getglobal("ChatBarFrameButton" .. buttonIndex .. "Text");
+	local center = getglobal("ChatBarFrameButton" .. buttonIndex .. "Center");
+	local background = getglobal("ChatBarFrameButton" .. buttonIndex .. "Background");
+	local chatTypeInfo = button and button.ChatID and ChatBar_ChatTypes[button.ChatID];
+	local colorInfo = chatTypeInfo and (ChatTypeInfo[chatTypeInfo.type] or ChatTypeInfo[chatTypeInfo.colorType] or ChatTypeInfo["SYSTEM"]);
+
+	if (ChatBar_IsOctagonArt()) then
+		background:SetTexture("Interface\\AddOns\\ChatBar\\SkinOctagon\\BG");
+		background:SetVertexColor(1, 1, 1);
+		background:SetAlpha(1);
+	else
+		background:SetAlpha(ChatBar_IsTextOnlyArt() and 0 or 1);
+	end
+
+	if (ChatBar_IsOctagonArt()) then
+		center:SetTexture(nil);
+		center:SetAlpha(0);
+	else
+		center:SetTexture(ChatBar_GetButtonCenterTexturePath());
+		center:SetAlpha(ChatBar_IsTextOnlyArt() and 0 or 1);
+	end
+
+	if (colorInfo and not ChatBar_IsOctagonArt()) then
+		center:SetVertexColor(colorInfo.r, colorInfo.g, colorInfo.b);
+	else
+		center:SetVertexColor(1, 1, 1);
+	end
+
+	if (chatTypeInfo) then
+		text:SetText(ChatBar_FormatButtonText(chatTypeInfo.shortText()));
+	else
+		text:SetText("");
+	end
+
+	if (ChatBar_ShouldShowButtonText() and chatTypeInfo) then
+		text:Show();
+	else
+		text:Hide();
+	end
 end
 
 local function ChatBar_UpdateButtonTextColors()
@@ -133,7 +193,7 @@ local function ChatBar_UpdateButtonTextColors()
 		local chatTypeInfo = button and button.ChatID and ChatBar_ChatTypes[button.ChatID];
 		local colorInfo = chatTypeInfo and (ChatTypeInfo[chatTypeInfo.type] or ChatTypeInfo[chatTypeInfo.colorType] or ChatTypeInfo["SYSTEM"]);
 
-		if (ChatBar_IsTextOnlyArt() and colorInfo) then
+		if ((ChatBar_IsTextOnlyArt() or ChatBar_IsOctagonArt()) and colorInfo) then
 			text:SetTextColor(colorInfo.r, colorInfo.g, colorInfo.b);
 		else
 			text:SetTextColor(defaultR, defaultG, defaultB);
@@ -1136,9 +1196,8 @@ function ChatBar_UpdateButtons()
 				ChatBar_BarTypes[ChatBar_ChatTypes[i].type] = buttonIndex;
 				getglobal("ChatBarFrameButton" .. buttonIndex .. "Highlight"):SetVertexColor(info.r, info.g, info.b);
 				getglobal("ChatBarFrameButton" .. buttonIndex .. "Flash"):SetVertexColor(info.r, info.g, info.b);
-				getglobal("ChatBarFrameButton" .. buttonIndex .. "Center"):SetVertexColor(info.r, info.g, info.b);
-				getglobal("ChatBarFrameButton" .. buttonIndex .. "Text"):SetText(ChatBar_FormatButtonText(ChatBar_ChatTypes[i].shortText()));
 				getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = i;
+				ChatBar_UpdateButtonFace(buttonIndex);
 				--getglobal("ChatBarFrameButton".. buttonIndex):Show();
 				buttonIndex = buttonIndex + 1;
 			end
@@ -1168,6 +1227,7 @@ function ChatBar_UpdateButtons()
 	while (buttonIndex <= CHAT_BAR_MAX_BUTTONS) do
 		--getglobal("ChatBarFrameButton".. buttonIndex):Hide();
 		getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = nil;
+		ChatBar_UpdateButtonFace(buttonIndex);
 		buttonIndex = buttonIndex + 1;
 	end
 	ChatBar_UpdateButtonTextColors();
@@ -1194,7 +1254,7 @@ function ChatBar_UpdateButtonOrientation()
 		else
 			button:SetPoint("BOTTOM", "ChatBarFrame", "BOTTOM", 0, (CHAT_BAR_EDGE_SIZE / ChatBar_ButtonScale));
 		end
-		if (ChatBar_TextOnButtonDisplay) then
+		if (ChatBar_ShouldCenterButtonText()) then
 			button.Text:SetPoint("CENTER", button);
 		else
 			button.Text:SetPoint("RIGHT", button, "LEFT", 0, 0);
@@ -1205,7 +1265,7 @@ function ChatBar_UpdateButtonOrientation()
 		else
 			button:SetPoint("LEFT", "ChatBarFrame", "LEFT", (CHAT_BAR_EDGE_SIZE / ChatBar_ButtonScale), 0);
 		end
-		if (ChatBar_TextOnButtonDisplay) then
+		if (ChatBar_ShouldCenterButtonText()) then
 			button.Text:SetPoint("CENTER", button);
 		else
 			button.Text:SetPoint("BOTTOM", button, "TOP");
@@ -1221,7 +1281,7 @@ function ChatBar_UpdateButtonOrientation()
 			else
 				button:SetPoint("BOTTOM", "ChatBarFrameButton" .. (i - 1), "TOP");
 			end
-			if (ChatBar_TextOnButtonDisplay) then
+			if (ChatBar_ShouldCenterButtonText()) then
 				button.Text:SetPoint("CENTER", button);
 			else
 				button.Text:SetPoint("RIGHT", button, "LEFT");
@@ -1232,7 +1292,7 @@ function ChatBar_UpdateButtonOrientation()
 			else
 				button:SetPoint("LEFT", "ChatBarFrameButton" .. (i - 1), "RIGHT");
 			end
-			if (ChatBar_TextOnButtonDisplay) then
+			if (ChatBar_ShouldCenterButtonText()) then
 				button.Text:SetPoint("CENTER", button);
 			else
 				button.Text:SetPoint("BOTTOM", button, "TOP");
@@ -1271,7 +1331,7 @@ function ChatBar_UpdateButtonFlashing()
 end
 
 function ChatBar_UpdateBarBorder()
-	if (ChatBar_BarBorder and not ChatBar_IsTextOnlyArt()) then
+	if (ChatBar_BarBorder and not ChatBar_IsTextOnlyArt() and not ChatBar_IsOctagonArt()) then
 		ChatBarFrameBackground:Show();
 	else
 		ChatBarFrameBackground:Hide();
@@ -1290,7 +1350,8 @@ function ChatBar_UpdateArt()
 	end
 	local dir = ChatBar_AltArtDirs[ChatBar_AltArt];
 	local textOnly = ChatBar_IsTextOnlyArt();
-	if (textOnly) then
+	local octagon = ChatBar_IsOctagonArt();
+	if (textOnly or octagon) then
 		ChatBar_TextOnButtonDisplay = true;
 		ChatBar_ButtonText = true;
 	end
@@ -1305,7 +1366,17 @@ function ChatBar_UpdateArt()
 		local downTexShad = getglobal("ChatBarFrameButton" .. i .. "DownTex_Shad");
 		local highlight = getglobal("ChatBarFrameButton" .. i .. "Highlight");
 
-		if (not textOnly) then
+		if (octagon) then
+			center:SetTexture(nil);
+			background:SetTexture("Interface\\AddOns\\ChatBar\\SkinOctagon\\BG");
+			background:SetVertexColor(1, 1, 1);
+			upTexSpec:SetTexture(nil);
+			downTexSpec:SetTexture(nil);
+			flash:SetTexture(nil);
+			upTexShad:SetTexture(nil);
+			downTexShad:SetTexture(nil);
+			highlight:SetTexture(nil);
+		elseif (not textOnly) then
 			upTexSpec:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Up_Spec");
 			downTexSpec:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Down_Spec");
 			flash:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Glow_Alpha");
@@ -1316,17 +1387,18 @@ function ChatBar_UpdateArt()
 			highlight:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Glow_Alpha");
 		end
 
-		upTexSpec:SetAlpha(textOnly and 0 or .75);
-		downTexSpec:SetAlpha(textOnly and 0 or 1);
-		flash:SetAlpha(textOnly and 0 or 1);
+		upTexSpec:SetAlpha((textOnly or octagon) and 0 or .75);
+		downTexSpec:SetAlpha((textOnly or octagon) and 0 or 1);
+		flash:SetAlpha((textOnly or octagon) and 0 or 1);
 		center:SetAlpha(textOnly and 0 or 1);
 		background:SetAlpha(textOnly and 0 or 1);
-		upTexShad:SetAlpha(textOnly and 0 or .75);
-		downTexShad:SetAlpha(textOnly and 0 or 1);
-		highlight:SetAlpha(textOnly and 0 or .75);
+		upTexShad:SetAlpha((textOnly or octagon) and 0 or .75);
+		downTexShad:SetAlpha((textOnly or octagon) and 0 or 1);
+		highlight:SetAlpha((textOnly or octagon) and 0 or .75);
+		ChatBar_UpdateButtonFace(i);
 	end
 
-	if (not textOnly) then
+	if (not textOnly and not octagon) then
 		ChatBarFrameBackground:SetBackdrop({
 			edgeFile = "Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChatBarBorder",
 			bgFile = "Interface\\AddOns\\ChatBar\\" .. dir .. "\\BlackBg",
@@ -1458,16 +1530,8 @@ function ChatBar_Toggle_HideAllButtons()
 end
 
 function ChatBar_UpdateButtonText()
-	if (ChatBar_ButtonText or ChatBar_IsTextOnlyArt()) then
-		for i = 1, CHAT_BAR_MAX_BUTTONS do
-			local button = getglobal("ChatBarFrameButton" .. i);
-			button.Text:Show();
-		end
-	else
-		for i = 1, CHAT_BAR_MAX_BUTTONS do
-			local button = getglobal("ChatBarFrameButton" .. i);
-			button.Text:Hide();
-		end
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		ChatBar_UpdateButtonFace(i);
 	end
 end
 
