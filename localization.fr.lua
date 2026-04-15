@@ -27,7 +27,6 @@ if (GetLocale() == "frFR") then
 	CHATBAR_MENU_MAIN_ADDONCHANNELS  = "Cacher les canaux d'addons";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Cacher les boutons";
 	CHATBAR_MENU_MAIN_RESET          = "R\195\169initialiser la position";
-	CHATBAR_MENU_MAIN_REORDER        = "R\195\169organiser les canaux";
 
 	CHATBAR_MENU_CHANNEL_LEAVE       = "Quitter";
 	CHATBAR_MENU_CHANNEL_LIST        = "Afficher la liste des utilisateurs du canal";
@@ -38,10 +37,6 @@ if (GetLocale() == "frFR") then
 	CHATBAR_MENU_STICKY              = "Permanent";
 
 	CHATBAR_MENU_SHOW_BUTTON         = "Afficher le bouton \"%s\"";
-
-	CHATBAR_REORDER_START            = "Trie des canaux en cours...";
-	CHATBAR_REORDER_END              = "Trie des canaux termin\195\169.";
-	CHATBAR_REORDER_FLIGHT_FAIL      = "Trie des canaux impossible en vol.";
 
 	-- Capital Cities (Mostly English)
 	--CHATBAR_ORGRIMMAR		= "Orgrimmar";

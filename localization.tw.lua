@@ -24,6 +24,9 @@ if (GetLocale() == "zhTW") then
 
 	CHATBAR_MENU_MAIN_TITLE             = "ChatBar 選項";
 	CHATBAR_MENU_MAIN_LARGE             = "大型按鈕";
+	CHATBAR_MENU_MAIN_BUTTONSIZE        = "按鈕大小";
+	CHATBAR_MENU_MAIN_TEXTSIZE          = "文字大小";
+	CHATBAR_MENU_MAIN_BUTTONPADDING     = "按鈕間距";
 	CHATBAR_MENU_MAIN_VERTICAL          = "垂直排列";
 	CHATBAR_MENU_MAIN_REVERSE           = "反轉按鈕順序";
 	CHATBAR_MENU_MAIN_ALTART            = "使用外觀增強";
@@ -36,8 +39,6 @@ if (GetLocale() == "zhTW") then
 	CHATBAR_MENU_MAIN_HIDEALL           = "隱藏所有按鈕";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS     = "隱藏按鈕";
 	CHATBAR_MENU_MAIN_RESET             = "重置到預設位置";
-	CHATBAR_MENU_MAIN_REORDER           = "重新排序頻道";
-	CHATBAR_MENU_MAIN_REQCHRONOS        = "(需要 Chronos)";
 
 	CHATBAR_MENU_CHANNEL_LEAVE          = "離開頻道";
 	CHATBAR_MENU_CHANNEL_LIST           = "顯示頻道內使用者清單";
@@ -47,11 +48,7 @@ if (GetLocale() == "zhTW") then
 	CHATBAR_MENU_CHANNEL_STICKY         = "置頂頻道";
 	CHATBAR_MENU_STICKY                 = "置頂";
 
-	CHATBAR_MENU_SHOW_BUTTON            = "顯是 \"%s\" 按鈕";
-
-	CHATBAR_REORDER_START               = "頻道重新排序中...";
-	CHATBAR_REORDER_END                 = "頻道重新排序完成";
-	CHATBAR_REORDER_FLIGHT_FAIL         = "您無法在飛行中排序頻道。";
+	CHATBAR_MENU_SHOW_BUTTON            = "顯示 \"%s\" 按鈕";
 
 	-- Capital Cities
 	CHATBAR_ORGRIMMAR                   = "奧格瑪";

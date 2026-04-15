@@ -13,6 +13,9 @@ if (GetLocale() == "ruRU") then
 
 	CHATBAR_MENU_MAIN_TITLE          = "Настройки Чатбара";
 	CHATBAR_MENU_MAIN_LARGE          = "Большие кнопки";
+	CHATBAR_MENU_MAIN_BUTTONSIZE     = "Размер кнопок";
+	CHATBAR_MENU_MAIN_TEXTSIZE       = "Размер текста";
+	CHATBAR_MENU_MAIN_BUTTONPADDING  = "Интервал между кнопками";
 	CHATBAR_MENU_MAIN_VERTICAL       = "Вертикальное расположение";
 	CHATBAR_MENU_MAIN_REVERSE        = "Обратное расположение кнопок";
 	CHATBAR_MENU_MAIN_ALTART         = "Альтернативный вид";
@@ -25,8 +28,6 @@ if (GetLocale() == "ruRU") then
 	CHATBAR_MENU_MAIN_HIDEALL        = "Скрыть все кнопки";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Скрытые кнопки";
 	CHATBAR_MENU_MAIN_RESET          = "Сбросить расположение";
-	CHATBAR_MENU_MAIN_REORDER        = "Переназначить каналы";
-	CHATBAR_MENU_MAIN_REQCHRONOS     = " (требуется Chronos)";
 
 	CHATBAR_MENU_CHANNEL_LEAVE       = "Покинуть";
 	CHATBAR_MENU_CHANNEL_LIST        = "Показать пользователей канала";
@@ -37,10 +38,6 @@ if (GetLocale() == "ruRU") then
 	CHATBAR_MENU_STICKY              = "Закрепить";
 
 	CHATBAR_MENU_SHOW_BUTTON         = "Показать кнопку \"%s\"";
-
-	CHATBAR_REORDER_START            = "Переназначение каналов...";
-	CHATBAR_REORDER_END              = "Переназначение каналов завершено.";
-	CHATBAR_REORDER_FLIGHT_FAIL      = "Вы не можете переназначить каналы в полёте.";
 
 	-- Capital Cities
 	CHATBAR_ORGRIMMAR                = "Оргриммар";

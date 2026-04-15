@@ -7,8 +7,8 @@
 ## Notes-esES: Barra de botones para abrir los mensajes de chat de cada tipo.
 ## Author: AnduinLothar, Lichery
 ## Version: 2.5
-## OptionalDeps: Chronos, VisibilityOptions
-## SavedVariablesPerCharacter: ChatBar_VerticalDisplay, ChatBar_AlternateOrientation, ChatBar_HideSpecialChannels, ChatBar_TextOnButtonDisplay, ChatBar_ButtonFlashing, ChatBar_BarBorder, ChatBar_ButtonText, ChatBar_StoredStickies, ChatBar_HiddenButtons, ChatBar_TextChannelNumbers, ChatBar_HideAllButtons, ChatBar_AltArt, ChatBar_ButtonScale
+## OptionalDeps: VisibilityOptions
+## SavedVariablesPerCharacter: ChatBar_VerticalDisplay, ChatBar_AlternateOrientation, ChatBar_TextOnButtonDisplay, ChatBar_ButtonFlashing, ChatBar_BarBorder, ChatBar_ButtonText, ChatBar_StoredStickies, ChatBar_HiddenButtons, ChatBar_TextChannelNumbers, ChatBar_AltArt, ChatBar_ButtonScale, ChatBar_ButtonSize, ChatBar_ButtonTextSize, ChatBar_ButtonPadding
 ## X-Category: Chat
 ## X-Website: http://www.wowinterface.com/downloads/info23678.html
 
@@ -20,3 +20,7 @@ localization.es.lua
 Localization.ru.lua
 localization.tw.lua
 ChatBar.lua
+ChatBarOptions.lua
+ChatBarButtons.lua
+ChatBarMenus.lua
+ChatBarUpdate.lua

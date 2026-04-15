@@ -31,7 +31,6 @@ if (GetLocale() == "deDE") then
 	CHATBAR_MENU_MAIN_HIDEALL        = "Alle Buttons verbergen";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Versteckte Buttons";
 	CHATBAR_MENU_MAIN_RESET          = "Position zur\195\188cksetzen";
-	CHATBAR_MENU_MAIN_REORDER        = "Channels neu ordnen";
 
 	CHATBAR_MENU_CHANNEL_LEAVE       = "Channel verlassen";
 	CHATBAR_MENU_CHANNEL_LIST        = "Spielerliste des Channels ausgeben";
@@ -42,10 +41,6 @@ if (GetLocale() == "deDE") then
 	CHATBAR_MENU_STICKY              = "Sticky";
 
 	CHATBAR_MENU_SHOW_BUTTON         = "\"%s\" Button anzeigen";
-
-	CHATBAR_REORDER_START            = "Channel werden neu geordnet...";
-	CHATBAR_REORDER_END              = "Channel wurden erfolgreich neu geordnet.";
-	CHATBAR_REORDER_FLIGHT_FAIL      = "Channel k\195\182nnen nicht geordnet werden w\195\164hrend du fliegst/reitest.";
 
 	-- Capital Cities
 	CHATBAR_ORGRIMMAR                = "Orgrimmar";

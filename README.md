@@ -54,6 +54,9 @@ Sticky - http://www.wowwiki.com/Chat#Advanced_Chat_Terminology.2FDetails Note: C
 
 
 ChatBar Options:    
+Button Size - Adjusts the size of each chat button.     
+Button Text Size - Adjusts the text size used on or around each button.     
+Button Spacing - Adjusts the gap between adjacent buttons.     
 Vertical Orienation - Toggles vertical/horrizontal bar via sliding.     
 Reverse Button Orienation - Toggles button order reversal via sliding     
 Text On Buttons - Toggles chattype abrev on/next to the buttons     

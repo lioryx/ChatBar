@@ -27,7 +27,6 @@ if (GetLocale() == "esES") then
 	CHATBAR_MENU_MAIN_ADDONCHANNELS  = "Ocultar Canales Addons";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Botones Ocultos";
 	CHATBAR_MENU_MAIN_RESET          = "Reiniciar Posici\195\179n";
-	CHATBAR_MENU_MAIN_REORDER        = "Reordenar Canales";
 
 	CHATBAR_MENU_CHANNEL_LEAVE       = "Dejar";
 	CHATBAR_MENU_CHANNEL_LIST        = "Mostrar Lista Usuarios Canal";
@@ -38,10 +37,6 @@ if (GetLocale() == "esES") then
 	CHATBAR_MENU_STICKY              = "Fijo";
 
 	CHATBAR_MENU_SHOW_BUTTON         = "Mostrar bot\195\179n \"%s\"";
-
-	CHATBAR_REORDER_START            = "Los canales est\195\161n siendo reordenados...";
-	CHATBAR_REORDER_END              = "Los canales han sido reordenados.";
-	CHATBAR_REORDER_FLIGHT_FAIL      = "No puedes reordenar canales mientras vuelas.";
 
 	-- Capital Cities
 	CHATBAR_ORGRIMMAR                = "Orgrimmar";

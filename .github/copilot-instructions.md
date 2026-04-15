@@ -7,6 +7,14 @@
 - The UI is created in [ChatBar.lua](../ChatBar.lua). Keep named frames and regions compatible with existing globals such as `ChatBarFrameButton1`, `ChatBarFrameTooltip`, and `ChatBar_DropDown`.
 - [SkinSolid](../SkinSolid) and [SkinSquares](../SkinSquares) are parallel skin directories with the same texture filenames. New skins should follow the same file layout expected by `ChatBar_UpdateArt`.
 
+## WoW 1.12.1 Vanilla and Lua 5.0 Coding rules
+- SetScript syntax: Frame:SetScript("EventType", function() end) - no parameters allowed in function()
+- "..." (varargs) - use explicit parameters instead
+- "%" (modulo) - use math.mod(a, b)
+- "#" (length) - use string.len() or table.getn()
+- "match"/"gmatch" - use string.find() with patterns
+- String concatenation: use .. operator
+
 ## Conventions
 - Preserve the addon's classic WoW UI style: global functions and state use `ChatBar_`, `CHAT_BAR_`, and `CHATBAR_` prefixes; frame handlers rely on globals such as `this`, `arg1`, and `event`.
 - Prefer small, compatible edits over modern Lua refactors. This codebase is written against the legacy WoW API and assumes globals remain available.
