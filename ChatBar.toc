@@ -6,7 +6,7 @@
 ## Notes-frFR: Barre de boutons pour ouvrir les message de discussions de chaque type.
 ## Notes-esES: Barra de botones para abrir los mensajes de chat de cada tipo.
 ## Author: AnduinLothar, Lichery
-## Version: 2.5
+## Version: 3.0
 ## OptionalDeps: VisibilityOptions
 ## SavedVariablesPerCharacter: ChatBar_VerticalDisplay, ChatBar_AlternateOrientation, ChatBar_TextOnButtonDisplay, ChatBar_ButtonFlashing, ChatBar_BarBorder, ChatBar_ButtonText, ChatBar_StoredStickies, ChatBar_HiddenButtons, ChatBar_TextChannelNumbers, ChatBar_AltArt, ChatBar_ButtonScale, ChatBar_ButtonSize, ChatBar_ButtonTextSize, ChatBar_ButtonPadding
 ## X-Category: Chat
