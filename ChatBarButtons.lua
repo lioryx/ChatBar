@@ -113,14 +113,30 @@ function ChatBar_CreateButton(parent, id)
 	local buttonName = parent:GetName() .. "Button" .. id;
 	local button = CreateFrame("Button", buttonName, parent);
 	button:SetID(id);
-	button:SetWidth(ChatBar_ButtonSize);
-	button:SetHeight(ChatBar_ButtonSize);
+	button:SetWidth(ChatBar_ButtonWidth);
+	button:SetHeight(ChatBar_ButtonHeight);
 
 	local text = button:CreateFontString(buttonName .. "Text", "OVERLAY", "GameFontNormalSmall");
-	text:SetWidth(ChatBar_ButtonSize + 8);
+	text:SetWidth(ChatBar_ButtonWidth + 8);
 	text:SetHeight(ChatBar_ButtonTextSize + 4);
 	text:SetJustifyH("CENTER");
 	text:SetPoint("BOTTOM", button, "TOP", 0, 0);
+
+	local shadow = CreateFrame("Frame", buttonName .. "Shadow", parent);
+	shadow:SetPoint("TOPLEFT", button, "TOPLEFT", -ChatBar_ColorBarBorderSize, ChatBar_ColorBarBorderSize);
+	shadow:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", ChatBar_ColorBarBorderSize, -ChatBar_ColorBarBorderSize);
+	shadow:SetBackdrop({
+		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true,
+		tileSize = 8,
+		edgeSize = 8,
+		insets = { left = 2, right = 2, top = 2, bottom = 2 },
+	});
+	shadow:SetBackdropColor(0, 0, 0, 0.8);
+	shadow:SetBackdropBorderColor(0, 0, 0, 0.5);
+	shadow:Hide();
+	button.Shadow = shadow;
 
 	ChatBar_CreateNamedTexture(button, buttonName .. "UpTex_Spec", "OVERLAY",
 		"Interface\\AddOns\\ChatBar\\SkinSolid\\ChanButton_Up_Spec");
@@ -154,10 +170,13 @@ function ChatBar_CreateButton(parent, id)
 	if (id == 1) then
 		button:SetPoint("LEFT", parent, "LEFT", CHAT_BAR_EDGE_SIZE, 0);
 	else
-		button:SetPoint("LEFT", parent:GetName() .. "Button" .. (id - 1), "RIGHT", ChatBar_ButtonPadding, 0);
+		button:SetPoint("LEFT", parent:GetName() .. "Button" .. (id - 1), "RIGHT", ChatBar_GetButtonSpacing(), 0);
 	end
 
 	ChatBar_InitializeButton(button);
+	if (button.Shadow) then
+		button.Shadow:SetFrameLevel(button:GetFrameLevel() - 1);
+	end
 	return button;
 end
 
@@ -169,8 +188,8 @@ function ChatBar_CreateUI()
 	local frame = CreateFrame("Frame", "ChatBarFrame", UIParent);
 	frame:EnableMouse(true);
 	frame:SetMovable(true);
-	frame:SetWidth(ChatBar_ButtonSize);
-	frame:SetHeight(ChatBar_ButtonSize);
+	frame:SetWidth(ChatBar_ButtonWidth);
+	frame:SetHeight(ChatBar_ButtonHeight);
 	frame:SetPoint("BOTTOMLEFT", "ChatFrame1", "TOPLEFT", 0, 30);
 	frame:SetScript("OnEvent", function()
 		ChatBar_OnEvent(event);
@@ -262,6 +281,29 @@ function ChatBar_WhisperButtonClick(button)
 			if (not chatFrame.editBox:IsVisible()) or (chatFrame.editBox.chatType ~= chatType) then
 				ChatFrame_OpenChat("/w ", chatFrame);
 			end
+		end
+	end
+end
+
+function ChatBar_HardcoreButtonClick(button)
+	local chatFrame = SELECTED_DOCK_FRAME;
+	if (not chatFrame) then
+		chatFrame = DEFAULT_CHAT_FRAME;
+	end
+	if (button == "RightButton") then
+		ToggleDropDownMenu(1, this.ChatID, ChatBar_DropDown, this:GetName(), 10, 0, "TOPRIGHT");
+	else
+		-- TurtleWoW 硬核频道：优先走原生 HARDCORE 类型，否则回退到 /h
+		if (ChatTypeInfo and ChatTypeInfo["HARDCORE"]) then
+			chatFrame.editBox:Show();
+			if (chatFrame.editBox.chatType == "HARDCORE") then
+				ChatFrame_OpenChat("", chatFrame);
+			else
+				chatFrame.editBox.chatType = "HARDCORE";
+			end
+			ChatEdit_UpdateHeader(chatFrame.editBox);
+		else
+			ChatFrame_OpenChat("/h ", chatFrame);
 		end
 	end
 end
@@ -414,6 +456,16 @@ ChatBar_ChatTypes = {
 		show = function()
 			return CanEditOfficerNote() and (not ChatBar_HiddenButtons[CHAT_MSG_OFFICER]);
 		end
+	},
+	{
+		type = "HARDCORE",
+		shortText = function() return CHATBAR_HARDCORE_ABRV; end,
+		text = function() return CHAT_MSG_HARDCORE or CHATBAR_HARDCORE; end,
+		click = ChatBar_HardcoreButtonClick,
+		show = function()
+			return (not ChatBar_HiddenButtons[CHAT_MSG_HARDCORE or CHATBAR_HARDCORE]);
+		end,
+		customColor = { r = 1, g = 0.5, b = 0.25 }
 	},
 	{
 		type = "CHANNEL1",

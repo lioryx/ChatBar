@@ -21,12 +21,14 @@ if (GetLocale() == "zhTW") then
 	CHATBAR_WHISPER_ABRV                = "密";
 	CHATBAR_EMOTE_ABRV                  = "表";
 	CHATBAR_ROLL_ABRV                   = "R";
+	CHATBAR_HARDCORE_ABRV               = "硬";
 
 	CHATBAR_MENU_MAIN_TITLE             = "ChatBar 選項";
 	CHATBAR_MENU_MAIN_LARGE             = "大型按鈕";
 	CHATBAR_MENU_MAIN_BUTTONSIZE        = "按鈕大小";
 	CHATBAR_MENU_MAIN_TEXTSIZE          = "文字大小";
 	CHATBAR_MENU_MAIN_BUTTONPADDING     = "按鈕間距";
+	CHATBAR_MENU_MAIN_COLORBARBORDER    = "彩色條形邊框";
 	CHATBAR_MENU_MAIN_VERTICAL          = "垂直排列";
 	CHATBAR_MENU_MAIN_REVERSE           = "反轉按鈕順序";
 	CHATBAR_MENU_MAIN_ALTART            = "使用外觀增強";
@@ -65,6 +67,7 @@ if (GetLocale() == "zhTW") then
 	CHATBAR_WORLDDEFENSE                = "世界防務";
 	CHATBAR_GUILDRECRUITMENT            = "公會招募";
 	CHATBAR_ROLL                        = "擲骰 1-100";
+	CHATBAR_HARDCORE                    = "硬核";
 
 	CHATBAR_SKIN1                       = "實心";
 	CHATBAR_SKIN2                       = "方塊";

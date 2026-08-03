@@ -214,13 +214,50 @@ local function ChatBar_RefreshButtonLayout()
 	ChatBar_UpdateButtons();
 end
 
-local function ChatBar_AdjustButtonSize(delta)
+local function ChatBar_AdjustButtonWidth(delta)
 	local newValue;
+	local squareMin;
+	local squareMax;
 	ChatBar_InitializeSizeSettings();
-	newValue = ChatBar_NormalizeSizeSetting(ChatBar_ButtonSize + delta, CHAT_BAR_BUTTON_SIZE,
-		CHAT_BAR_BUTTON_SIZE_MIN, CHAT_BAR_BUTTON_SIZE_MAX, CHAT_BAR_BUTTON_SIZE_STEP);
-	if (newValue ~= ChatBar_ButtonSize) then
-		ChatBar_ButtonSize = newValue;
+	if (ChatBar_IsColorBarArt()) then
+		newValue = ChatBar_NormalizeSizeSetting(ChatBar_ButtonWidth + delta, CHAT_BAR_BUTTON_WIDTH,
+			CHAT_BAR_BUTTON_WIDTH_MIN, CHAT_BAR_BUTTON_WIDTH_MAX, CHAT_BAR_BUTTON_WIDTH_STEP);
+		if (newValue ~= ChatBar_ButtonWidth) then
+			ChatBar_ButtonWidth = newValue;
+			ChatBar_RefreshButtonLayout();
+		end
+		return;
+	end
+
+	if (CHAT_BAR_BUTTON_WIDTH_MIN > CHAT_BAR_BUTTON_HEIGHT_MIN) then
+		squareMin = CHAT_BAR_BUTTON_WIDTH_MIN;
+	else
+		squareMin = CHAT_BAR_BUTTON_HEIGHT_MIN;
+	end
+	if (CHAT_BAR_BUTTON_WIDTH_MAX < CHAT_BAR_BUTTON_HEIGHT_MAX) then
+		squareMax = CHAT_BAR_BUTTON_WIDTH_MAX;
+	else
+		squareMax = CHAT_BAR_BUTTON_HEIGHT_MAX;
+	end
+	newValue = ChatBar_NormalizeSizeSetting(ChatBar_ButtonWidth + delta, CHAT_BAR_BUTTON_WIDTH,
+		squareMin, squareMax, CHAT_BAR_BUTTON_WIDTH_STEP);
+	if (newValue ~= ChatBar_ButtonWidth) then
+		ChatBar_ButtonWidth = newValue;
+		ChatBar_ButtonHeight = newValue;
+		ChatBar_RefreshButtonLayout();
+	end
+end
+
+local function ChatBar_AdjustButtonHeight(delta)
+	local newValue;
+	if (not ChatBar_IsColorBarArt()) then
+		return;
+	end
+	ChatBar_InitializeSizeSettings();
+	newValue = ChatBar_NormalizeSizeSetting(ChatBar_ButtonHeight + delta, CHAT_BAR_BUTTON_HEIGHT,
+		CHAT_BAR_BUTTON_HEIGHT_MIN, CHAT_BAR_BUTTON_HEIGHT_MAX, CHAT_BAR_BUTTON_HEIGHT_STEP);
+	if (newValue ~= ChatBar_ButtonHeight) then
+		ChatBar_ButtonHeight = newValue;
 		ChatBar_RefreshButtonLayout();
 	end
 end
@@ -247,12 +284,35 @@ local function ChatBar_AdjustButtonPadding(delta)
 	end
 end
 
-function ChatBar_DecreaseButtonSize()
-	ChatBar_AdjustButtonSize(-CHAT_BAR_BUTTON_SIZE_STEP);
+local function ChatBar_AdjustColorBarBorderSize(delta)
+	local newValue;
+	if (not ChatBar_IsColorBarArt()) then
+		return;
+	end
+	ChatBar_InitializeSizeSettings();
+	newValue = ChatBar_NormalizeSizeSetting(ChatBar_ColorBarBorderSize + delta, CHAT_BAR_COLORBAR_BORDER,
+		CHAT_BAR_COLORBAR_BORDER_MIN, CHAT_BAR_COLORBAR_BORDER_MAX, CHAT_BAR_COLORBAR_BORDER_STEP);
+	if (newValue ~= ChatBar_ColorBarBorderSize) then
+		ChatBar_ColorBarBorderSize = newValue;
+		-- 边框大小变化会影响间距（间距含 2 倍边框），需要重排整个布局
+		ChatBar_RefreshButtonLayout();
+	end
 end
 
-function ChatBar_IncreaseButtonSize()
-	ChatBar_AdjustButtonSize(CHAT_BAR_BUTTON_SIZE_STEP);
+function ChatBar_DecreaseButtonWidth()
+	ChatBar_AdjustButtonWidth(-CHAT_BAR_BUTTON_WIDTH_STEP);
+end
+
+function ChatBar_IncreaseButtonWidth()
+	ChatBar_AdjustButtonWidth(CHAT_BAR_BUTTON_WIDTH_STEP);
+end
+
+function ChatBar_DecreaseButtonHeight()
+	ChatBar_AdjustButtonHeight(-CHAT_BAR_BUTTON_HEIGHT_STEP);
+end
+
+function ChatBar_IncreaseButtonHeight()
+	ChatBar_AdjustButtonHeight(CHAT_BAR_BUTTON_HEIGHT_STEP);
 end
 
 function ChatBar_DecreaseButtonTextSize()
@@ -271,6 +331,14 @@ function ChatBar_IncreaseButtonPadding()
 	ChatBar_AdjustButtonPadding(CHAT_BAR_BUTTON_PADDING_STEP);
 end
 
+function ChatBar_DecreaseColorBarBorderSize()
+	ChatBar_AdjustColorBarBorderSize(-CHAT_BAR_COLORBAR_BORDER_STEP);
+end
+
+function ChatBar_IncreaseColorBarBorderSize()
+	ChatBar_AdjustColorBarBorderSize(CHAT_BAR_COLORBAR_BORDER_STEP);
+end
+
 function ChatBar_UpdateOptionsPanel()
 	if (not ChatBarOptionsPanel) then
 		return;
@@ -279,6 +347,12 @@ function ChatBar_UpdateOptionsPanel()
 	local panel = ChatBarOptionsPanel;
 	local i;
 	local currentTab;
+	local colorBars = ChatBar_IsColorBarArt();
+	local squareMin;
+	local squareMax;
+	local widthMin;
+	local widthMax;
+	local sizeAnchor;
 
 	ChatBar_InitializeSizeSettings();
 	currentTab = panel.currentTab or "general";
@@ -296,18 +370,69 @@ function ChatBar_UpdateOptionsPanel()
 		panel.ChannelsTab:Enable();
 	end
 
-	panel.ButtonSizeRow.Value:SetText(ChatBar_ButtonSize);
+	if (colorBars) then
+		panel.ButtonHeightRow:Show();
+		panel.ColorBarBorderRow:Show();
+		panel.ButtonHeightRow:ClearAllPoints();
+		panel.ButtonHeightRow:SetPoint("TOPLEFT", panel.ButtonWidthRow, "BOTTOMLEFT", 0, -4);
+		panel.ButtonTextSizeRow:ClearAllPoints();
+		panel.ButtonTextSizeRow:SetPoint("TOPLEFT", panel.ButtonHeightRow, "BOTTOMLEFT", 0, -4);
+		panel.ColorBarBorderRow:ClearAllPoints();
+		panel.ColorBarBorderRow:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", 0, -4);
+		sizeAnchor = panel.ColorBarBorderRow;
+	else
+		panel.ButtonHeightRow:Hide();
+		panel.ColorBarBorderRow:Hide();
+		panel.ButtonTextSizeRow:ClearAllPoints();
+		panel.ButtonTextSizeRow:SetPoint("TOPLEFT", panel.ButtonWidthRow, "BOTTOMLEFT", 0, -4);
+		sizeAnchor = panel.ButtonPaddingRow;
+	end
+	panel.VerticalButtons:ClearAllPoints();
+	panel.VerticalButtons:SetPoint("TOPLEFT", sizeAnchor, "BOTTOMLEFT", -4, -2);
+
+	panel.ButtonWidthRow.Value:SetText(ChatBar_ButtonWidth);
+	panel.ButtonHeightRow.Value:SetText(ChatBar_ButtonHeight);
 	panel.ButtonTextSizeRow.Value:SetText(ChatBar_ButtonTextSize);
 	panel.ButtonPaddingRow.Value:SetText(ChatBar_ButtonPadding);
-	if (ChatBar_ButtonSize <= CHAT_BAR_BUTTON_SIZE_MIN) then
-		panel.ButtonSizeRow.Minus:Disable();
+	panel.ColorBarBorderRow.Value:SetText(ChatBar_ColorBarBorderSize);
+
+	if (colorBars) then
+		widthMin = CHAT_BAR_BUTTON_WIDTH_MIN;
+		widthMax = CHAT_BAR_BUTTON_WIDTH_MAX;
 	else
-		panel.ButtonSizeRow.Minus:Enable();
+		if (CHAT_BAR_BUTTON_WIDTH_MIN > CHAT_BAR_BUTTON_HEIGHT_MIN) then
+			squareMin = CHAT_BAR_BUTTON_WIDTH_MIN;
+		else
+			squareMin = CHAT_BAR_BUTTON_HEIGHT_MIN;
+		end
+		if (CHAT_BAR_BUTTON_WIDTH_MAX < CHAT_BAR_BUTTON_HEIGHT_MAX) then
+			squareMax = CHAT_BAR_BUTTON_WIDTH_MAX;
+		else
+			squareMax = CHAT_BAR_BUTTON_HEIGHT_MAX;
+		end
+		widthMin = squareMin;
+		widthMax = squareMax;
 	end
-	if (ChatBar_ButtonSize >= CHAT_BAR_BUTTON_SIZE_MAX) then
-		panel.ButtonSizeRow.Plus:Disable();
+
+	if (ChatBar_ButtonWidth <= widthMin) then
+		panel.ButtonWidthRow.Minus:Disable();
 	else
-		panel.ButtonSizeRow.Plus:Enable();
+		panel.ButtonWidthRow.Minus:Enable();
+	end
+	if (ChatBar_ButtonWidth >= widthMax) then
+		panel.ButtonWidthRow.Plus:Disable();
+	else
+		panel.ButtonWidthRow.Plus:Enable();
+	end
+	if (ChatBar_ButtonHeight <= CHAT_BAR_BUTTON_HEIGHT_MIN) then
+		panel.ButtonHeightRow.Minus:Disable();
+	else
+		panel.ButtonHeightRow.Minus:Enable();
+	end
+	if (ChatBar_ButtonHeight >= CHAT_BAR_BUTTON_HEIGHT_MAX) then
+		panel.ButtonHeightRow.Plus:Disable();
+	else
+		panel.ButtonHeightRow.Plus:Enable();
 	end
 	if (ChatBar_ButtonTextSize <= CHAT_BAR_BUTTON_TEXT_SIZE_MIN) then
 		panel.ButtonTextSizeRow.Minus:Disable();
@@ -329,8 +454,34 @@ function ChatBar_UpdateOptionsPanel()
 	else
 		panel.ButtonPaddingRow.Plus:Enable();
 	end
-	panel.VerticalButtons:SetChecked(ChatBar_VerticalDisplay);
-	panel.ReverseButtons:SetChecked(ChatBar_AlternateOrientation);
+	if (ChatBar_ColorBarBorderSize <= CHAT_BAR_COLORBAR_BORDER_MIN) then
+		panel.ColorBarBorderRow.Minus:Disable();
+	else
+		panel.ColorBarBorderRow.Minus:Enable();
+	end
+	if (ChatBar_ColorBarBorderSize >= CHAT_BAR_COLORBAR_BORDER_MAX) then
+		panel.ColorBarBorderRow.Plus:Disable();
+	else
+		panel.ColorBarBorderRow.Plus:Enable();
+	end
+	local verticalChecked = ChatBar_VerticalDisplay;
+	local reverseChecked = ChatBar_AlternateOrientation;
+	-- 滑动动画结束前实际标志尚未翻转，勾选框显示即将生效的目标状态
+	if (ChatBar_VerticalDisplay_Sliding) then
+		verticalChecked = not ChatBar_VerticalDisplay;
+	end
+	if (ChatBar_AlternateDisplay_Sliding) then
+		reverseChecked = not ChatBar_AlternateOrientation;
+	end
+	panel.VerticalButtons:SetChecked(verticalChecked);
+	panel.ReverseButtons:SetChecked(reverseChecked);
+	if (ChatBar_VerticalDisplay_Sliding or ChatBar_AlternateDisplay_Sliding) then
+		panel.VerticalButtons:Disable();
+		panel.ReverseButtons:Disable();
+	else
+		panel.VerticalButtons:Enable();
+		panel.ReverseButtons:Enable();
+	end
 	panel.TextOnButtons:SetChecked(ChatBar_TextOnButtonDisplay);
 	panel.ShowButtonText:SetChecked(ChatBar_ButtonText);
 	panel.ChannelNumbers:SetChecked(ChatBar_TextChannelNumbers);
@@ -393,7 +544,7 @@ function ChatBar_CreateOptionsPanel()
 
 	local panel = CreateFrame("Frame", "ChatBarOptionsPanel", UIParent);
 	panel:SetWidth(300);
-	panel:SetHeight(432);
+	panel:SetHeight(500);
 	panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
 	panel:SetFrameStrata("DIALOG");
 	panel:SetMovable(true);
@@ -457,15 +608,22 @@ function ChatBar_CreateOptionsPanel()
 	UIDropDownMenu_SetWidth(180, panel.AltArtDropDown);
 	UIDropDownMenu_Initialize(panel.AltArtDropDown, ChatBar_InitializeAltArtDropDown);
 
-	panel.ButtonSizeRow = ChatBar_CreateOptionsValueRow(panel.GeneralPage, panel:GetName() .. "ButtonSizeRow", CHATBAR_MENU_MAIN_BUTTONSIZE);
-	panel.ButtonSizeRow:SetPoint("TOPLEFT", panel.AltArtDropDown, "BOTTOMLEFT", 16, -8);
-	panel.ButtonSizeRow.Minus.actionFunc = ChatBar_DecreaseButtonSize;
-	panel.ButtonSizeRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
-	panel.ButtonSizeRow.Plus.actionFunc = ChatBar_IncreaseButtonSize;
-	panel.ButtonSizeRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+	panel.ButtonWidthRow = ChatBar_CreateOptionsValueRow(panel.GeneralPage, panel:GetName() .. "ButtonWidthRow", CHATBAR_MENU_MAIN_BUTTONWIDTH);
+	panel.ButtonWidthRow:SetPoint("TOPLEFT", panel.AltArtDropDown, "BOTTOMLEFT", 16, -8);
+	panel.ButtonWidthRow.Minus.actionFunc = ChatBar_DecreaseButtonWidth;
+	panel.ButtonWidthRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+	panel.ButtonWidthRow.Plus.actionFunc = ChatBar_IncreaseButtonWidth;
+	panel.ButtonWidthRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+
+	panel.ButtonHeightRow = ChatBar_CreateOptionsValueRow(panel.GeneralPage, panel:GetName() .. "ButtonHeightRow", CHATBAR_MENU_MAIN_BUTTONHEIGHT);
+	panel.ButtonHeightRow:SetPoint("TOPLEFT", panel.ButtonWidthRow, "BOTTOMLEFT", 0, -4);
+	panel.ButtonHeightRow.Minus.actionFunc = ChatBar_DecreaseButtonHeight;
+	panel.ButtonHeightRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+	panel.ButtonHeightRow.Plus.actionFunc = ChatBar_IncreaseButtonHeight;
+	panel.ButtonHeightRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
 	panel.ButtonTextSizeRow = ChatBar_CreateOptionsValueRow(panel.GeneralPage, panel:GetName() .. "ButtonTextSizeRow", CHATBAR_MENU_MAIN_TEXTSIZE);
-	panel.ButtonTextSizeRow:SetPoint("TOPLEFT", panel.ButtonSizeRow, "BOTTOMLEFT", 0, -4);
+	panel.ButtonTextSizeRow:SetPoint("TOPLEFT", panel.ButtonHeightRow, "BOTTOMLEFT", 0, -4);
 	panel.ButtonTextSizeRow.Minus.actionFunc = ChatBar_DecreaseButtonTextSize;
 	panel.ButtonTextSizeRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 	panel.ButtonTextSizeRow.Plus.actionFunc = ChatBar_IncreaseButtonTextSize;
@@ -478,8 +636,16 @@ function ChatBar_CreateOptionsPanel()
 	panel.ButtonPaddingRow.Plus.actionFunc = ChatBar_IncreaseButtonPadding;
 	panel.ButtonPaddingRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
+	panel.ColorBarBorderRow = ChatBar_CreateOptionsValueRow(panel.GeneralPage, panel:GetName() .. "ColorBarBorderRow",
+		CHATBAR_MENU_MAIN_COLORBARBORDER or "Color Bar Border");
+	panel.ColorBarBorderRow:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", 0, -4);
+	panel.ColorBarBorderRow.Minus.actionFunc = ChatBar_DecreaseColorBarBorderSize;
+	panel.ColorBarBorderRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+	panel.ColorBarBorderRow.Plus.actionFunc = ChatBar_IncreaseColorBarBorderSize;
+	panel.ColorBarBorderRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+
 	panel.VerticalButtons = ChatBar_CreateOptionsCheckButton(panel.GeneralPage, panel:GetName() .. "VerticalButtons", CHATBAR_MENU_MAIN_VERTICAL);
-	panel.VerticalButtons:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", -4, -2);
+	panel.VerticalButtons:SetPoint("TOPLEFT", panel.ColorBarBorderRow, "BOTTOMLEFT", -4, -2);
 	panel.VerticalButtons.optionFunc = ChatBar_Toggle_VerticalButtonOrientationSlide;
 	panel.VerticalButtons:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
