@@ -1,7 +1,7 @@
 # ChatBar
 ChatBar - Button Bar for openning chat messages of each type.
 
-Current addon version: 3.0
+Current addon version: 3.2
 
 ## Original creator
 - [KarlKFI](https://wow.curseforge.com/addons/project-1579/)
@@ -11,6 +11,21 @@ Current addon version: 3.0
 - [Lichery](https://github.com/Lichery)
 
 ## Changelog
+* v3.2
+  - Added localized addon titles and notes for Simplified Chinese, Traditional Chinese, German, and Russian
+  - Corrected English and French addon notes in the addon list
+
+* v3.1
+  - Added the Color Bars skin with adjustable border size, and independent Button Width / Button Height controls
+  - Split the options window into Skin, Text, Behavior, and Channels tabs
+  - Added Hover Text Fade, Reverse Text Position, and Auto-hide on mouse leave
+  - Buttons can be drag-reordered on the bar; the Channels tab can sort by channel number or name
+  - Added shortcut buttons for common addons and tools (Meeting Stone, AtlasLoot, SuperMacro, Outfitter, Tracking, Ready Check, Countdown, Emote Menu, and more); extras are hidden by default
+  - Tab key cycles chat channels and recent whisper targets
+  - Added TurtleWoW Hardcore channel support and extra battleground zones
+  - Moving the bar now requires Ctrl + left click
+  - Unused extra buttons are now hidden; raid leader messages flash the Raid button; officer chat visibility follows guild rank
+
 * v3.0
   - Split the original ChatBar.lua into focused files for core logic, buttons, menus, updates, and options
   - Replaced the old Large Buttons toggle with adjustable Button Size, Button Text Size, and Button Spacing settings
@@ -74,22 +89,33 @@ o - Buttons, colored the color of a chat type, left click to open editbox of tha
   - Note: Channels are all or none, other types can be stickied individually.
 
 ### ChatBar Options:
-* General Tab - Contains layout, text, art, and visual settings for the bar
-  - Use Alternate Artwork - Select the active built-in skin from a dropdown list
-  - Button Size - Adjusts the size of each chat button.
-  - Button Text Size - Adjusts the text size used on or around each button.
-  - Button Spacing - Adjusts the gap between adjacent buttons.
-  - Vertical Orienation - Toggles vertical/horrizontal bar via sliding.
-  - Reverse Button Orienation - Toggles button order reversal via sliding
-  - Text On Buttons - Toggles chattype abrev on/next to the buttons
-  - Show Button Text - Toggles chattype abrev visibility
-  - Use Channel ID On Buttons - Toggles using the channel index or the first letter of the channel name
-  - Button Message Flashing - Toggles button flashing when you receive a message of that type
+* Skin Tab - Artwork and button dimensions
+  - Use Alternate Artwork - Select the active built-in skin from a dropdown list (Solid, Squares, Text Only, Octagon, Color Bars)
+  - Button Width / Button Height - Adjusts the size of each chat button independently
+  - Button Spacing - Adjusts the gap between adjacent buttons
+  - Color Bar Border - Adjusts the Color Bars skin border
   - Show Bar Border - Toggles show/hide the bar border/background. Note: You can still click on the ends of the bar when it's hidden
+
+* Text Tab
+  - Button Text Size - Adjusts the text size used on or around each button
+  - Show Button Text - Toggles chattype abrev visibility
+  - Text On Buttons - Toggles chattype abrev on/next to the buttons
+  - Reverse Text Position - Toggles which side of the button the text appears on
+  - Hover Text Fade - Fades button text in on mouseover
+  - Use Channel ID On Buttons - Toggles using the channel index or the first letter of the channel name
+
+* Behavior Tab
+  - Vertical Orienation - Toggles vertical/horrizontal bar via sliding
+  - Reverse Button Orienation - Toggles button order reversal via sliding
+  - Button Message Flashing - Toggles button flashing when you receive a message of that type
+  - Auto-hide on mouse leave - Hides the bar until the mouse returns to the chat area
   - Reset Position - Attaches the ChatBarFrame to above the ChatFrame1 tab
 
 * Channels Tab - Lists all available ChatBar buttons and channels with checkbox-based visibility control
   - Channel Visibility - Use the Channels tab checkboxes to choose which buttons are shown
   - Select All / Clear All - Show or hide every listed button in the Channels tab at once
+  - Channel Sort - Sort listed buttons by channel number or name
+  - Reset Sort - Restore the default button order
+  - Drag buttons on the bar to reorder them
   - Scrollable Channel List - Lets you manage all listed buttons even when the list exceeds the panel height
 

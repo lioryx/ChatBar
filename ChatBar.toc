@@ -1,12 +1,18 @@
 ## Interface: 11200
 ## Title: ChatBar
-## Notes: Button Bar for openning chat messages of each type.
-## Notes-ruRU: Панель кнопок для открытия сообщений каждого типа.
+## Title-zhCN: ChatBar
+## Title-zhTW: ChatBar
+## Title-deDE: ChatLeiste
+## Title-ruRU: Чатбар
+## Notes: Button Bar for opening chat messages of each type.
+## Notes-zhCN: |CFF33AAFFChatBar|R|N为说、喊、队伍、团队、公会等各种聊天类型提供快捷按钮条。|N命令：/cb
+## Notes-zhTW: |CFF33AAFFChatBar|R|N為說、喊、隊伍、團隊、公會等各種聊天類型提供快捷按鈕列。|N命令：/cb
 ## Notes-deDE: Button-Leiste zum Senden von Chatnachrichten jedes Typs.
-## Notes-frFR: Barre de boutons pour ouvrir les message de discussions de chaque type.
+## Notes-frFR: Barre de boutons pour ouvrir les messages de discussion de chaque type.
 ## Notes-esES: Barra de botones para abrir los mensajes de chat de cada tipo.
+## Notes-ruRU: Панель кнопок для открытия сообщений каждого типа.
 ## Author: AnduinLothar, Lichery
-## Version: 3.1
+## Version: 3.2
 ## OptionalDeps: VisibilityOptions
 ## SavedVariablesPerCharacter: ChatBar_VerticalDisplay, ChatBar_AlternateOrientation, ChatBar_TextOnButtonDisplay, ChatBar_ReverseTextPosition, ChatBar_HoverTextEnabled, ChatBar_ButtonFlashing, ChatBar_BarBorder, ChatBar_FadeEnabled, ChatBar_ButtonText, ChatBar_StoredStickies, ChatBar_HiddenButtons, ChatBar_TextChannelNumbers, ChatBar_AltArt, ChatBar_ButtonScale, ChatBar_ButtonSize, ChatBar_ButtonWidth, ChatBar_ButtonHeight, ChatBar_ButtonTextSize, ChatBar_ButtonPadding, ChatBar_CountdownLen, ChatBar_TrackingMode, ChatBar_ChannelSort, ChatBar_ButtonOrder, ChatBar_PluginDefaultsInitialized, ChatBar_ColorBarBorderSize, ChatBar_StoredColorBarOverrides
 ## X-Category: Chat
