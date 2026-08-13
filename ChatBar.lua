@@ -164,6 +164,17 @@ function ChatBar_ShouldShowButtonText()
 	return ChatBar_ButtonText or ChatBar_IsTextOnlyArt() or ChatBar_IsOctagonArt();
 end
 
+function ChatBar_IsButtonTextHoverFadeActive()
+	if (not ChatBar_HoverTextEnabled) or (not ChatBar_ShouldShowButtonText()) then
+		return false;
+	end
+	-- 纯文字皮肤没有按钮底图，渐隐后按钮会完全消失
+	if (ChatBar_IsTextOnlyArt()) then
+		return false;
+	end
+	return true;
+end
+
 function ChatBar_NormalizeSizeSetting(value, defaultValue, minValue, maxValue, step)
 	if (type(value) ~= "number") then
 		value = defaultValue;

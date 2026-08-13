@@ -46,7 +46,7 @@ local function ChatBar_UpdateButtonFace(buttonIndex)
 	end
 
 	if (ChatBar_ShouldShowButtonText() and chatTypeInfo) then
-		if (ChatBar_HoverTextEnabled) and (not ChatBar_ShouldCenterButtonText()) then
+		if (ChatBar_IsButtonTextHoverFadeActive()) then
 			if (button == ChatBar_HoveredButton) then
 				text:Show();
 				text:SetAlpha(ChatBar_TextFadeAlpha);
@@ -876,6 +876,7 @@ end
 function ChatBar_Toggle_TextOrientation()
 	ChatBar_TextOnButtonDisplay = not ChatBar_TextOnButtonDisplay;
 	ChatBar_UpdateButtonOrientation();
+	ChatBar_UpdateButtonText();
 end
 
 function ChatBar_Toggle_ReverseTextPosition()

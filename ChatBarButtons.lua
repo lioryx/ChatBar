@@ -117,13 +117,13 @@ function ChatBar_Button_OnHide()
 end
 
 function ChatBar_Button_OnEnter()
-	if (this.ChatID) and (ChatBar_HoverTextEnabled) and (ChatBar_ShouldShowButtonText()) and (not ChatBar_ShouldCenterButtonText()) then
+	if (this.ChatID) and (ChatBar_IsButtonTextHoverFadeActive()) then
 		ChatBar_TextFadeIn(this);
 	end
 end
 
 function ChatBar_Button_OnLeave()
-	if (ChatBar_HoverTextEnabled) and (not ChatBar_ShouldCenterButtonText()) then
+	if (ChatBar_IsButtonTextHoverFadeActive()) then
 		ChatBar_TextFadeOut();
 	end
 end
