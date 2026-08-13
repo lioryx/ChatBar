@@ -77,10 +77,11 @@ CHAT_BAR_ALPHA_FADE_TIME = 0.3;
 CHAT_BAR_HOVER_DELAY = 0.2;
 CHAT_BAR_HOVER_ZONE_EXTEND = 20;
 CHAT_BAR_TEXTFADE_TIME = 0.2;
-ChatBar_FadeEnabled = true;
+ChatBar_FadeEnabled = false;
 ChatBar_IsHovering = false;
 ChatBar_FadeTimer = 0;
 ChatBar_TargetAlpha = CHAT_BAR_ALPHA_SHOWN;
+ChatBar_FadeStartAlpha = CHAT_BAR_ALPHA_SHOWN;
 ChatBar_CurrentAlpha = CHAT_BAR_ALPHA_SHOWN;
 ChatBar_HoverTimer = 0;
 ChatBar_IsFading = false;
@@ -88,6 +89,7 @@ ChatBar_ManualShow = false;
 ChatBar_ManualShowUntil = 0;
 ChatBar_HoverTextEnabled = true;
 ChatBar_TextFadeAlpha = 0.0;
+ChatBar_TextFadeStartAlpha = 0.0;
 ChatBar_TextFadeTarget = 0.0;
 ChatBar_TextFadeTimer = 0;
 ChatBar_TextFadeIsFading = false;
@@ -103,6 +105,45 @@ end
 
 function ChatBar_IsColorBarArt()
 	return ChatBar_AltArtDirs[ChatBar_AltArt] == "ColorBars";
+end
+
+local ChatBar_ExtraBattlegroundZones = {
+	["阳光林地"] = true,
+	["血环竞技场"] = true,
+	["荆棘峡谷"] = true,
+	["Sunnyglade"] = true,
+	["Sunny Glade"] = true,
+	["Blood Ring Arena"] = true,
+	["Bloodring Arena"] = true,
+	["Thorn Gorge"] = true,
+	["Thorn Canyon"] = true,
+};
+
+function ChatBar_IsInBattleground()
+	local zoneName = GetZoneText();
+	if (not zoneName) or (zoneName == "") then
+		return false;
+	end
+	if (zoneName == CHATBAR_WSG) or (zoneName == CHATBAR_AB) or (zoneName == CHATBAR_AV) then
+		return true;
+	end
+	if (ChatBar_ExtraBattlegroundZones[zoneName]) then
+		return true;
+	end
+	return false;
+end
+
+function ChatBar_CanUseOfficerChat()
+	if (not IsInGuild()) then
+		return false;
+	end
+	if (IsGuildLeader()) then
+		return true;
+	end
+	if (CanViewOfficerNote) and (CanViewOfficerNote()) then
+		return true;
+	end
+	return CanEditOfficerNote();
 end
 
 function ChatBar_GetButtonSpacing()
@@ -143,6 +184,12 @@ function ChatBar_InitializePluginDefaults()
 		return;
 	end
 	ChatBar_PluginDefaultsInitialized = true;
+
+	-- 首次初始化时若 pfUI 已加载，隐藏自带追踪按钮以免和小地图冲突
+	if (pfUI and pfUI.env) then
+		ChatBar_TrackingMode = "hide";
+	end
+
 	if (not ChatBar_ChatTypes) then
 		return;
 	end
@@ -339,8 +386,10 @@ function ChatBar_SetAlpha(alpha, instant)
 	if (instant) then
 		ChatBarFrame:SetAlpha(alpha);
 		ChatBar_CurrentAlpha = alpha;
+		ChatBar_FadeStartAlpha = alpha;
 		ChatBar_IsFading = false;
 	else
+		ChatBar_FadeStartAlpha = ChatBar_CurrentAlpha;
 		ChatBar_TargetAlpha = alpha;
 		ChatBar_IsFading = true;
 		ChatBar_FadeTimer = 0;
@@ -383,7 +432,7 @@ function ChatBar_InitializeFade()
 	end
 	ChatBarFrame:Show();
 	if (ChatBar_FadeEnabled == nil) then
-		ChatBar_FadeEnabled = true;
+		ChatBar_FadeEnabled = false;
 	end
 	ChatBarFrame.lastHoverCheck = 0;
 	ChatBar_SetAlpha(CHAT_BAR_ALPHA_SHOWN, true);
@@ -530,7 +579,7 @@ function ChatBar_FadeOnUpdate(elapsed)
 		if (progress > 1) then
 			progress = 1;
 		end
-		local newAlpha = ChatBar_CurrentAlpha + (ChatBar_TargetAlpha - ChatBar_CurrentAlpha) * progress;
+		local newAlpha = ChatBar_FadeStartAlpha + (ChatBar_TargetAlpha - ChatBar_FadeStartAlpha) * progress;
 		if (ChatBarFrame) then
 			ChatBarFrame:SetAlpha(newAlpha);
 		end
@@ -589,6 +638,7 @@ function ChatBar_TextFadeIn(button)
 		button.Text:Show();
 		button.Text:SetAlpha(ChatBar_TextFadeAlpha);
 	end
+	ChatBar_TextFadeStartAlpha = ChatBar_TextFadeAlpha;
 	ChatBar_TextFadeTarget = 1.0;
 	ChatBar_TextFadeTimer = 0;
 	ChatBar_TextFadeIsFading = true;
@@ -598,6 +648,7 @@ function ChatBar_TextFadeOut()
 	if (not ChatBar_HoveredButton) then
 		return;
 	end
+	ChatBar_TextFadeStartAlpha = ChatBar_TextFadeAlpha;
 	ChatBar_TextFadeTarget = 0.0;
 	ChatBar_TextFadeTimer = 0;
 	ChatBar_TextFadeIsFading = true;
@@ -612,7 +663,7 @@ function ChatBar_TextFadeOnUpdate(elapsed)
 	if (progress > 1) then
 		progress = 1;
 	end
-	local newAlpha = ChatBar_TextFadeAlpha + (ChatBar_TextFadeTarget - ChatBar_TextFadeAlpha) * progress;
+	local newAlpha = ChatBar_TextFadeStartAlpha + (ChatBar_TextFadeTarget - ChatBar_TextFadeStartAlpha) * progress;
 	ChatBar_TextFadeAlpha = newAlpha;
 	local button = ChatBar_HoveredButton;
 	if (button and button.Text) then

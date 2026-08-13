@@ -22,24 +22,11 @@ f:SetScript("OnEvent", function()
 	end
 end)
 
-local battlegroundZones = {
-	["奥特兰克山谷"] = true,
-	["战歌峡谷"] = true,
-	["阿拉希盆地"] = true,
-	["阳光林地"] = true,
-	["血环竞技场"] = true,
-	["荆棘峡谷"] = true,
-	["Alterac Valley"] = true,
-	["Warsong Gulch"] = true,
-	["Arathi Basin"] = true,
-}
-
 local function IsInBattleground()
-	local zoneName = GetZoneText()
-	return battlegroundZones[zoneName]
+	return ChatBar_IsInBattleground();
 end
 
-function processString(input)
+local function processString(input)
 	if (type(input) ~= "string") or (input == "") then
 		return input or ""
 	end

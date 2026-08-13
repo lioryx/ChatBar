@@ -124,7 +124,7 @@ if (GetLocale() == "zhCN") then
 	CHATBAR_READYCHECK               = "就位确认";
 	CHATBAR_COUNTDOWN_ABRV           = "倒";
 	CHATBAR_COUNTDOWN                = "倒计时（左键开始，右键取消）";
-	CHATBAR_EMOTEMENU_ABRV           = "表";
+	CHATBAR_EMOTEMENU_ABRV           = "姿";
 	CHATBAR_EMOTEMENU                = "表情菜单";
 
 	-- Zones

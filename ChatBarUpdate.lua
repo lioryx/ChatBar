@@ -116,6 +116,10 @@ function ChatBar_OnEvent(event)
 		if (ChatBar_BarTypes["CHANNEL" .. arg8]) then
 			UIFrameFlash(getglobal("ChatBarFrameButton" .. ChatBar_BarTypes["CHANNEL" .. arg8] .. "Flash"), .5, .5, 1.1);
 		end
+	elseif (event == "CHAT_MSG_RAID_LEADER") then
+		if (ChatBar_BarTypes["RAID"]) then
+			UIFrameFlash(getglobal("ChatBarFrameButton" .. ChatBar_BarTypes["RAID"] .. "Flash"), .5, .5, 1.1);
+		end
 	elseif (event == "VARIABLES_LOADED") then
 		ChatBar_InitializeSizeSettings();
 		ChatBar_InitializePluginDefaults();
@@ -129,8 +133,12 @@ function ChatBar_OnEvent(event)
 		ChatBarFrame.count = 0;
 
 		for chatType, enabled in ChatBar_StoredStickies do
-			if (enabled) then
-				ChatTypeInfo[chatType].sticky = enabled;
+			if (ChatTypeInfo[chatType]) then
+				if (enabled == 1) then
+					ChatTypeInfo[chatType].sticky = 1;
+				elseif (enabled == 0) then
+					ChatTypeInfo[chatType].sticky = 0;
+				end
 			end
 		end
 	else
@@ -140,9 +148,9 @@ function ChatBar_OnEvent(event)
 	end
 end
 
-ConstantVelocityModifier = 1.25;
-ConstantJerk = 3 * ConstantVelocityModifier;
-ConstantSnapLimit = 2;
+local ConstantVelocityModifier = 1.25;
+local ConstantJerk = 3 * ConstantVelocityModifier;
+local ConstantSnapLimit = 2;
 
 function ChatBar_OnUpdate(elapsed)
 	if (this.slidingEnabled) and (this.isSliding) and (this.velocity) and (this.endsize) then
@@ -514,6 +522,7 @@ function ChatBar_UpdateButtons()
 	while (buttonIndex <= CHAT_BAR_MAX_BUTTONS) do
 		getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = nil;
 		ChatBar_UpdateButtonFace(buttonIndex);
+		getglobal("ChatBarFrameButton" .. buttonIndex):Hide();
 		buttonIndex = buttonIndex + 1;
 	end
 	ChatBar_UpdateButtonTextColors();
@@ -607,6 +616,7 @@ function ChatBar_UpdateButtonFlashing()
 		frame:RegisterEvent("CHAT_MSG_YELL");
 		frame:RegisterEvent("CHAT_MSG_PARTY");
 		frame:RegisterEvent("CHAT_MSG_RAID");
+		frame:RegisterEvent("CHAT_MSG_RAID_LEADER");
 		frame:RegisterEvent("CHAT_MSG_RAID_WARNING");
 		frame:RegisterEvent("CHAT_MSG_BATTLEGROUND");
 		frame:RegisterEvent("CHAT_MSG_GUILD");
@@ -620,6 +630,7 @@ function ChatBar_UpdateButtonFlashing()
 		frame:UnregisterEvent("CHAT_MSG_YELL");
 		frame:UnregisterEvent("CHAT_MSG_PARTY");
 		frame:UnregisterEvent("CHAT_MSG_RAID");
+		frame:UnregisterEvent("CHAT_MSG_RAID_LEADER");
 		frame:UnregisterEvent("CHAT_MSG_RAID_WARNING");
 		frame:UnregisterEvent("CHAT_MSG_BATTLEGROUND");
 		frame:UnregisterEvent("CHAT_MSG_GUILD");
@@ -724,7 +735,8 @@ function ChatBar_UpdateArt()
 			background:SetVertexColor(1, 1, 1);
 			upTexSpec:SetTexture(nil);
 			downTexSpec:SetTexture(nil);
-			flash:SetTexture(nil);
+			flash:SetTexture("Interface\\Buttons\\WHITE8X8");
+			flash:SetBlendMode("ADD");
 			upTexShad:SetTexture(nil);
 			downTexShad:SetTexture(nil);
 			highlight:SetTexture(nil);
@@ -733,14 +745,19 @@ function ChatBar_UpdateArt()
 			background:SetTexture(nil);
 			upTexSpec:SetTexture(nil);
 			downTexSpec:SetTexture(nil);
-			flash:SetTexture(nil);
+			flash:SetTexture("Interface\\Buttons\\WHITE8X8");
+			flash:SetBlendMode("ADD");
 			upTexShad:SetTexture(nil);
 			downTexShad:SetTexture(nil);
 			highlight:SetTexture(nil);
-		elseif (not textOnly) then
+		elseif (textOnly) then
+			flash:SetTexture("Interface\\Buttons\\WHITE8X8");
+			flash:SetBlendMode("ADD");
+		else
 			upTexSpec:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Up_Spec");
 			downTexSpec:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Down_Spec");
 			flash:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Glow_Alpha");
+			flash:SetBlendMode("ADD");
 			center:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Center");
 			background:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_BG");
 			upTexShad:SetTexture("Interface\\AddOns\\ChatBar\\" .. dir .. "\\ChanButton_Up_Shad");
@@ -750,14 +767,14 @@ function ChatBar_UpdateArt()
 
 		upTexSpec:SetAlpha((textOnly or octagon or colorBars) and 0 or .75);
 		downTexSpec:SetAlpha((textOnly or octagon or colorBars) and 0 or 1);
-		flash:SetAlpha((textOnly or octagon or colorBars) and 0 or 1);
+		flash:SetAlpha(1);
 		center:SetAlpha((textOnly and 0) or 1);
 		background:SetAlpha((textOnly or colorBars) and 0 or 1);
 		upTexShad:SetAlpha((textOnly or octagon or colorBars) and 0 or .75);
 		downTexShad:SetAlpha((textOnly or octagon or colorBars) and 0 or 1);
 		highlight:SetAlpha((textOnly or octagon or colorBars) and 0 or .75);
 		if (button and button.Shadow) then
-			if (colorBars) then
+			if (colorBars) and (button:IsShown()) and (button.ChatID) then
 				button.Shadow:Show();
 			else
 				button.Shadow:Hide();

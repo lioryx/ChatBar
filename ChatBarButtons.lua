@@ -98,7 +98,22 @@ function ChatBar_Button_OnLoad()
 end
 
 function ChatBar_Button_OnClick()
+	if (not this.ChatID) or (not ChatBar_ChatTypes[this.ChatID]) then
+		return;
+	end
 	ChatBar_ChatTypes[this.ChatID].click(arg1);
+end
+
+function ChatBar_Button_OnShow()
+	if (this.Shadow) and (ChatBar_IsColorBarArt()) and (this.ChatID) then
+		this.Shadow:Show();
+	end
+end
+
+function ChatBar_Button_OnHide()
+	if (this.Shadow) then
+		this.Shadow:Hide();
+	end
 end
 
 function ChatBar_Button_OnEnter()
@@ -117,9 +132,13 @@ function ChatBar_OnMouseDown(button)
 	if (button == "RightButton") then
 		ChatBar_ToggleOptionsPanel(this);
 	else
+		local scale = 1.0;
+		if (UIParent and UIParent.GetScale) then
+			scale = UIParent:GetScale() or 1.0;
+		end
 		local x, y = GetCursorPosition();
-		this.xOffset = x - this:GetLeft();
-		this.yOffset = y - this:GetBottom();
+		this.xOffset = (x / scale) - this:GetLeft();
+		this.yOffset = (y / scale) - this:GetBottom();
 	end
 end
 
@@ -128,9 +147,13 @@ function ChatBar_OnDragStart()
 		return;
 	end
 	if (not this.isSliding) then
+		local scale = 1.0;
+		if (UIParent and UIParent.GetScale) then
+			scale = UIParent:GetScale() or 1.0;
+		end
 		local x, y = GetCursorPosition();
 		this:ClearAllPoints();
-		this:SetPoint("BOTTOMLEFT", "UIParent", "BOTTOMLEFT", x - this.xOffset, y - this.yOffset);
+		this:SetPoint("BOTTOMLEFT", "UIParent", "BOTTOMLEFT", (x / scale) - this.xOffset, (y / scale) - this.yOffset);
 		this:StartMoving();
 		this.isMoving = true;
 	end
@@ -200,6 +223,8 @@ function ChatBar_CreateButton(parent, id)
 	button:SetScript("OnEnter", ChatBar_Button_OnEnter);
 	button:SetScript("OnLeave", ChatBar_Button_OnLeave);
 	button:SetScript("OnClick", ChatBar_Button_OnClick);
+	button:SetScript("OnShow", ChatBar_Button_OnShow);
+	button:SetScript("OnHide", ChatBar_Button_OnHide);
 	button:SetScript("OnMouseDown", ChatBar_Button_OnMouseDown);
 	button:SetScript("OnMouseUp", ChatBar_Button_OnMouseUp);
 	button:SetScript("OnDragStart", ChatBar_Button_OnDragStart);
@@ -479,8 +504,7 @@ ChatBar_ChatTypes = {
 		text = function() return CHAT_MSG_BATTLEGROUND; end,
 		click = ChatBar_StandardButtonClick,
 		show = function()
-			return (GetZoneText() == CHATBAR_WSG or GetZoneText() == CHATBAR_AB or GetZoneText() == CHATBAR_AV) and
-			(not ChatBar_HiddenButtons[CHAT_MSG_BATTLEGROUND]);
+			return ChatBar_IsInBattleground() and (not ChatBar_HiddenButtons[CHAT_MSG_BATTLEGROUND]);
 		end
 	},
 	{
@@ -498,7 +522,7 @@ ChatBar_ChatTypes = {
 		text = function() return CHAT_MSG_OFFICER; end,
 		click = ChatBar_StandardButtonClick,
 		show = function()
-			return CanEditOfficerNote() and (not ChatBar_HiddenButtons[CHAT_MSG_OFFICER]);
+			return ChatBar_CanUseOfficerChat() and (not ChatBar_HiddenButtons[CHAT_MSG_OFFICER]);
 		end
 	},
 	{
@@ -507,6 +531,9 @@ ChatBar_ChatTypes = {
 		text = function() return CHAT_MSG_HARDCORE or CHATBAR_HARDCORE; end,
 		click = ChatBar_HardcoreButtonClick,
 		show = function()
+			if (not ChatTypeInfo) or (not ChatTypeInfo["HARDCORE"]) then
+				return false;
+			end
 			return (not ChatBar_HiddenButtons[CHAT_MSG_HARDCORE or CHATBAR_HARDCORE]);
 		end,
 		customColor = { r = 1, g = 0.5, b = 0.25 }

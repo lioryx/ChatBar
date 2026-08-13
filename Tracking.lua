@@ -1,14 +1,11 @@
-local _, playerClass = UnitClass("player")
+local playerClass
+local _, initialClass = UnitClass("player")
+if (initialClass) then
+	playerClass = initialClass
+end
 
 if (type(ChatBar_TrackingMode) ~= "string") then
 	ChatBar_TrackingMode = "modern" -- 默认模式: "native"=原生, "modern"=替换原生按钮, "hide"=隐藏
-end
-
--- 如果检测到pfUI，则默认设置为隐藏，避免冲突
-if pfUI and pfUI.env then
-	if (ChatBar_TrackingMode == "modern") then
-		ChatBar_TrackingMode = "hide"
-	end
 end
 
 local function HasEntries(tbl)
@@ -84,6 +81,13 @@ TrackingFrame:RegisterEvent("PLAYER_AURAS_CHANGED")
 TrackingFrame:RegisterEvent("SPELLS_CHANGED")
 TrackingFrame:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
 TrackingFrame:SetScript("OnEvent", function()
+	if event == "PLAYER_ENTERING_WORLD" then
+		local _, class = UnitClass("player")
+		if (class) then
+			playerClass = class
+		end
+	end
+
 	if event == "SPELLS_CHANGED" then
 		state.spells = {}
 	end
@@ -185,18 +189,16 @@ function TrackingFrame:RefreshSpells()
 	local isCatForm = self:PlayerIsDruidInCatForm(playerClass)
 	state.spells = {}
 	for tabIndex = 1, GetNumSpellTabs() do
-		local name, texture, offset, numSpells = GetSpellTabInfo(tabIndex)
+		local _, _, offset, numSpells = GetSpellTabInfo(tabIndex)
 		for spellIndex = offset + 1, offset + numSpells do
 			local spellTexture = GetSpellTexture(spellIndex, BOOKTYPE_SPELL)
-			if name == "综合" then
-				for _, textureKey in pairs(knownTrackingSpellTextures.any) do
-					if spellTexture and strfind(spellTexture, textureKey) then
-						state.spells[textureKey] = {
-							index = spellIndex,
-							name = GetSpellName(spellIndex, BOOKTYPE_SPELL),
-							texture = spellTexture
-						}
-					end
+			for _, textureKey in pairs(knownTrackingSpellTextures.any) do
+				if spellTexture and strfind(spellTexture, textureKey) then
+					state.spells[textureKey] = {
+						index = spellIndex,
+						name = GetSpellName(spellIndex, BOOKTYPE_SPELL),
+						texture = spellTexture
+					}
 				end
 			end
 			if knownTrackingSpellTextures[playerClass] then
