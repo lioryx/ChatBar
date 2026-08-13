@@ -24,6 +24,9 @@ if (GetLocale() == "frFR") then
 	CHATBAR_MENU_MAIN_CHANNELID      = "Utiliser le channel ID sur les boutons";
 	CHATBAR_MENU_MAIN_BUTTONFLASHING = "Bouton Message Flash";
 	CHATBAR_MENU_MAIN_BARBORDER      = "Afficher le contours de la barre";
+	CHATBAR_MENU_MAIN_FADE           = "Masquage auto (souris ailleurs)";
+	CHATBAR_FADE_ON                  = "activ\195\169";
+	CHATBAR_FADE_OFF                 = "d\195\169sactiv\195\169";
 	CHATBAR_MENU_MAIN_ADDONCHANNELS  = "Cacher les canaux d'addons";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Cacher les boutons";
 	CHATBAR_MENU_MAIN_RESET          = "R\195\169initialiser la position";

@@ -27,6 +27,9 @@ if (GetLocale() == "deDE") then
 	CHATBAR_MENU_MAIN_CHANNELID      = "Channel-ID statt K\195\188rzel im Button anzeigen";
 	CHATBAR_MENU_MAIN_BUTTONFLASHING = "Button blinkend bei neuer Nachricht";
 	CHATBAR_MENU_MAIN_BARBORDER      = "Rahmen der ChatLeiste anzeigen";
+	CHATBAR_MENU_MAIN_FADE           = "Auto-Ausblenden (Maus weg)";
+	CHATBAR_FADE_ON                  = "an";
+	CHATBAR_FADE_OFF                 = "aus";
 	CHATBAR_MENU_MAIN_ADDONCHANNELS  = "Channels vom AddOn verbergen";
 	CHATBAR_MENU_MAIN_HIDEALL        = "Alle Buttons verbergen";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Versteckte Buttons";

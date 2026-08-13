@@ -8,7 +8,7 @@
 ## Author: AnduinLothar, Lichery
 ## Version: 3.1
 ## OptionalDeps: VisibilityOptions
-## SavedVariablesPerCharacter: ChatBar_VerticalDisplay, ChatBar_AlternateOrientation, ChatBar_TextOnButtonDisplay, ChatBar_ButtonFlashing, ChatBar_BarBorder, ChatBar_ButtonText, ChatBar_StoredStickies, ChatBar_HiddenButtons, ChatBar_TextChannelNumbers, ChatBar_AltArt, ChatBar_ButtonScale, ChatBar_ButtonSize, ChatBar_ButtonWidth, ChatBar_ButtonHeight, ChatBar_ButtonTextSize, ChatBar_ButtonPadding, ChatBar_CountdownLen, ChatBar_TrackingMode, ChatBar_PluginDefaultsInitialized, ChatBar_ColorBarBorderSize, ChatBar_StoredColorBarOverrides
+## SavedVariablesPerCharacter: ChatBar_VerticalDisplay, ChatBar_AlternateOrientation, ChatBar_TextOnButtonDisplay, ChatBar_ReverseTextPosition, ChatBar_HoverTextEnabled, ChatBar_ButtonFlashing, ChatBar_BarBorder, ChatBar_FadeEnabled, ChatBar_ButtonText, ChatBar_StoredStickies, ChatBar_HiddenButtons, ChatBar_TextChannelNumbers, ChatBar_AltArt, ChatBar_ButtonScale, ChatBar_ButtonSize, ChatBar_ButtonWidth, ChatBar_ButtonHeight, ChatBar_ButtonTextSize, ChatBar_ButtonPadding, ChatBar_CountdownLen, ChatBar_TrackingMode, ChatBar_ChannelSort, ChatBar_ButtonOrder, ChatBar_PluginDefaultsInitialized, ChatBar_ColorBarBorderSize, ChatBar_StoredColorBarOverrides
 ## X-Category: Chat
 ## X-Website: http://www.wowinterface.com/downloads/info23678.html
 

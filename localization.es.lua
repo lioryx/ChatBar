@@ -24,6 +24,9 @@ if (GetLocale() == "esES") then
 	CHATBAR_MENU_MAIN_CHANNELID      = "Usar ID de canal en botones";
 	CHATBAR_MENU_MAIN_BUTTONFLASHING = "Destello Bot\195\179n Mensaje";
 	CHATBAR_MENU_MAIN_BARBORDER      = "Mostrar Borde Barra";
+	CHATBAR_MENU_MAIN_FADE           = "Auto-ocultar (rat\195\179n fuera)";
+	CHATBAR_FADE_ON                  = "activado";
+	CHATBAR_FADE_OFF                 = "desactivado";
 	CHATBAR_MENU_MAIN_ADDONCHANNELS  = "Ocultar Canales Addons";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Botones Ocultos";
 	CHATBAR_MENU_MAIN_RESET          = "Reiniciar Posici\195\179n";

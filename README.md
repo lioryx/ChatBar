@@ -62,7 +62,7 @@ A little acsii art for demonstration: [oooooooo]
 
 o - Buttons, colored the color of a chat type, left click to open editbox of that type, right click for type specific options. Initial letter of the type on or above the button
 
-[ ] - Ends of the bar, left click to drag, right click for options
+[ ] - Ends of the bar, hold Ctrl + left click to drag, right click for options
 
 ### Button / ChatType Options:
 * Leave (Channel)

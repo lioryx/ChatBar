@@ -37,6 +37,9 @@ if (GetLocale() == "zhTW") then
 	CHATBAR_MENU_MAIN_CHANNELID         = "使用頻道ID代替頻道名稱";
 	CHATBAR_MENU_MAIN_BUTTONFLASHING    = "閃爍按鈕訊息";
 	CHATBAR_MENU_MAIN_BARBORDER         = "顯示背景邊框";
+	CHATBAR_MENU_MAIN_FADE              = "滑鼠移開自動隱藏";
+	CHATBAR_FADE_ON                     = "已開啟";
+	CHATBAR_FADE_OFF                    = "已關閉";
 	CHATBAR_MENU_MAIN_ADDONCHANNELS     = "隱藏插件頻道";
 	CHATBAR_MENU_MAIN_HIDEALL           = "隱藏所有按鈕";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS     = "隱藏按鈕";

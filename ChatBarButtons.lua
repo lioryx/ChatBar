@@ -45,7 +45,8 @@ function ChatBar_InitializeButton(button)
 	getglobal(button:GetName() .. "DownTex_Shad"):SetAlpha(1);
 
 	button:SetFrameLevel(button:GetFrameLevel() + 1);
-	button:RegisterForClicks("LeftButtonDown", "RightButtonDown");
+	button:RegisterForClicks("LeftButtonUp", "RightButtonDown");
+	button:RegisterForDrag("LeftButton");
 end
 
 function ChatBar_InitializeDropDown(dropDown)
@@ -62,6 +63,36 @@ function ChatBar_Button_OnMouseUp()
 	getglobal(this:GetName() .. "DownTex_Spec"):Hide();
 end
 
+function ChatBar_Button_OnDragStart()
+	-- Ctrl+拖动用于移动整个按钮条，这里不处理按钮排序
+	if (IsControlKeyDown()) then
+		return;
+	end
+	if (ChatBar_IsPinnedEntry(this.ChatID)) then
+		return;
+	end
+	ChatBar_DragSourceButton = this:GetID();
+	this:SetAlpha(0.5);
+end
+
+function ChatBar_Button_OnDragStop()
+	if (not ChatBar_DragSourceButton) then
+		return;
+	end
+	local sourceButton = ChatBar_DragSourceButton;
+	ChatBar_DragSourceButton = nil;
+
+	local sourceFrame = getglobal("ChatBarFrameButton" .. sourceButton);
+	if (sourceFrame) then
+		sourceFrame:SetAlpha(1);
+	end
+
+	local targetButton = ChatBar_GetButtonIndexAtCursor();
+	if (targetButton) and (targetButton ~= sourceButton) then
+		ChatBar_MoveButtonToPosition(sourceButton, targetButton);
+	end
+end
+
 function ChatBar_Button_OnLoad()
 	ChatBar_InitializeButton(this);
 end
@@ -71,15 +102,14 @@ function ChatBar_Button_OnClick()
 end
 
 function ChatBar_Button_OnEnter()
-	if (this.ChatID) then
-		ChatBarFrameTooltip:SetOwner(this, "ANCHOR_TOPLEFT");
-		ChatBarFrameTooltip:SetText(ChatBar_ChatTypes[this.ChatID].text());
+	if (this.ChatID) and (ChatBar_HoverTextEnabled) and (ChatBar_ShouldShowButtonText()) and (not ChatBar_ShouldCenterButtonText()) then
+		ChatBar_TextFadeIn(this);
 	end
 end
 
 function ChatBar_Button_OnLeave()
-	if (ChatBarFrameTooltip:IsOwned(this)) then
-		ChatBarFrameTooltip:Hide();
+	if (ChatBar_HoverTextEnabled) and (not ChatBar_ShouldCenterButtonText()) then
+		ChatBar_TextFadeOut();
 	end
 end
 
@@ -94,6 +124,9 @@ function ChatBar_OnMouseDown(button)
 end
 
 function ChatBar_OnDragStart()
+	if (not IsControlKeyDown()) then
+		return;
+	end
 	if (not this.isSliding) then
 		local x, y = GetCursorPosition();
 		this:ClearAllPoints();
@@ -104,6 +137,9 @@ function ChatBar_OnDragStart()
 end
 
 function ChatBar_OnDragStop()
+	if (not this.isMoving) then
+		return;
+	end
 	this:StopMovingOrSizing();
 	this.isMoving = false;
 	ChatBar_UpdateOrientationPoint(true);
@@ -166,6 +202,8 @@ function ChatBar_CreateButton(parent, id)
 	button:SetScript("OnClick", ChatBar_Button_OnClick);
 	button:SetScript("OnMouseDown", ChatBar_Button_OnMouseDown);
 	button:SetScript("OnMouseUp", ChatBar_Button_OnMouseUp);
+	button:SetScript("OnDragStart", ChatBar_Button_OnDragStart);
+	button:SetScript("OnDragStop", ChatBar_Button_OnDragStop);
 
 	if (id == 1) then
 		button:SetPoint("LEFT", parent, "LEFT", CHAT_BAR_EDGE_SIZE, 0);
@@ -218,10 +256,6 @@ function ChatBar_CreateUI()
 		ChatBar_CreateButton(frame, i);
 	end
 
-	local tooltip = CreateFrame("GameTooltip", frame:GetName() .. "Tooltip", frame, "GameTooltipTemplate");
-	tooltip:SetFrameStrata("TOOLTIP");
-	tooltip:Hide();
-
 	local dropDown = CreateFrame("Frame", "ChatBar_DropDown", UIParent, "UIDropDownMenuTemplate");
 	dropDown:SetID(1);
 	dropDown:SetWidth(10);
@@ -234,6 +268,11 @@ function ChatBar_CreateUI()
 	ChatBar_InitializeFrame(frame);
 	ChatBar_InitializeDropDown(dropDown);
 	ChatBar_UpdateButtons();
+
+	-- 登录加载阶段先隐藏：此时 SavedVariables 尚未加载，按钮数量和尺寸仍是默认值，
+	-- 直接显示会出现一个很长的错误尺寸长条；待 VARIABLES_LOADED 完成初始化后再显示。
+	ChatBar_SetAlpha(CHAT_BAR_ALPHA_HIDDEN, true);
+	frame:Hide();
 end
 
 local SendChatMessage_orig = SendChatMessage;
@@ -247,6 +286,7 @@ end
 SendChatMessage = ChatBar_SendChatMessage;
 
 function ChatBar_StandardButtonClick(button)
+	ChatBar_ForceShow();
 	local chatFrame = SELECTED_DOCK_FRAME;
 	if (not chatFrame) then
 		chatFrame = DEFAULT_CHAT_FRAME;
@@ -266,6 +306,7 @@ function ChatBar_StandardButtonClick(button)
 end
 
 function ChatBar_WhisperButtonClick(button)
+	ChatBar_ForceShow();
 	local chatFrame = SELECTED_DOCK_FRAME;
 	if (not chatFrame) then
 		chatFrame = DEFAULT_CHAT_FRAME;
@@ -286,6 +327,7 @@ function ChatBar_WhisperButtonClick(button)
 end
 
 function ChatBar_HardcoreButtonClick(button)
+	ChatBar_ForceShow();
 	local chatFrame = SELECTED_DOCK_FRAME;
 	if (not chatFrame) then
 		chatFrame = DEFAULT_CHAT_FRAME;
@@ -328,6 +370,7 @@ function ChatBar_ChannelText(index)
 end
 
 function ChatBar_ChannelClick(button, index)
+	ChatBar_ForceShow();
 	if (not index) then
 		index = 1;
 	end
@@ -350,6 +393,7 @@ function ChatBar_ChannelClick(button, index)
 end
 
 function ChatBar_RollButtonClick(button)
+	ChatBar_ForceShow();
 	if (button == "RightButton") then
 		ChatBar_ToggleOptionsPanel(this);
 	else
@@ -543,8 +587,9 @@ ChatBar_ChatTypes = {
 		text = function() return CHATBAR_ROLL; end,
 		click = ChatBar_RollButtonClick,
 		show = function()
-			return (not ChatBar_HiddenButtons[CHATBAR_ROLL]);
+			return true;
 		end,
+		alwaysShow = true,
 		colorType = "SYSTEM"
 	}
 };

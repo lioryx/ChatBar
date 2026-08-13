@@ -24,6 +24,9 @@ if (GetLocale() == "ruRU") then
 	CHATBAR_MENU_MAIN_CHANNELID      = "Показывать номер канала на кнопках";
 	CHATBAR_MENU_MAIN_BUTTONFLASHING = "Мерцание при сообщении";
 	CHATBAR_MENU_MAIN_BARBORDER      = "Показывать границу панели";
+	CHATBAR_MENU_MAIN_FADE           = "Авто-скрытие (мышь ушла)";
+	CHATBAR_FADE_ON                  = "включено";
+	CHATBAR_FADE_OFF                 = "выключено";
 	CHATBAR_MENU_MAIN_ADDONCHANNELS  = "Скрыть каналы аддонов";
 	CHATBAR_MENU_MAIN_HIDEALL        = "Скрыть все кнопки";
 	CHATBAR_MENU_MAIN_HIDDENBUTTONS  = "Скрытые кнопки";

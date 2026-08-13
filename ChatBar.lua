@@ -49,6 +49,7 @@ ChatBar_TextOnButtonDisplay = false;
 ChatBar_ButtonFlashing = true;
 ChatBar_BarBorder = true;
 ChatBar_ButtonText = true;
+ChatBar_ReverseTextPosition = false;
 ChatBar_TextChannelNumbers = false;
 ChatBar_VerticalDisplay_Sliding = false;
 ChatBar_AlternateDisplay_Sliding = false;
@@ -65,7 +66,32 @@ ChatBar_ButtonPadding = CHAT_BAR_BUTTON_PADDING;
 ChatBar_ColorBarBorderSize = CHAT_BAR_COLORBAR_BORDER;
 ChatBar_CountdownLen = 6;
 ChatBar_TrackingMode = "modern";
+ChatBar_ChannelSort = "number";
+ChatBar_ButtonOrder = nil;
+ChatBar_DragSourceButton = nil;
 ChatBar_PluginDefaultsInitialized = false;
+
+CHAT_BAR_ALPHA_HIDDEN = 0.0;
+CHAT_BAR_ALPHA_SHOWN = 1.0;
+CHAT_BAR_ALPHA_FADE_TIME = 0.3;
+CHAT_BAR_HOVER_DELAY = 0.2;
+CHAT_BAR_HOVER_ZONE_EXTEND = 20;
+CHAT_BAR_TEXTFADE_TIME = 0.2;
+ChatBar_FadeEnabled = true;
+ChatBar_IsHovering = false;
+ChatBar_FadeTimer = 0;
+ChatBar_TargetAlpha = CHAT_BAR_ALPHA_SHOWN;
+ChatBar_CurrentAlpha = CHAT_BAR_ALPHA_SHOWN;
+ChatBar_HoverTimer = 0;
+ChatBar_IsFading = false;
+ChatBar_ManualShow = false;
+ChatBar_ManualShowUntil = 0;
+ChatBar_HoverTextEnabled = true;
+ChatBar_TextFadeAlpha = 0.0;
+ChatBar_TextFadeTarget = 0.0;
+ChatBar_TextFadeTimer = 0;
+ChatBar_TextFadeIsFading = false;
+ChatBar_HoveredButton = nil;
 
 function ChatBar_IsTextOnlyArt()
 	return ChatBar_AltArtDirs[ChatBar_AltArt] == "TextOnly";
@@ -94,9 +120,6 @@ function ChatBar_ShouldCenterButtonText()
 end
 
 function ChatBar_ShouldShowButtonText()
-	if (ChatBar_IsColorBarArt()) then
-		return false;
-	end
 	return ChatBar_ButtonText or ChatBar_IsTextOnlyArt() or ChatBar_IsOctagonArt();
 end
 
@@ -133,6 +156,9 @@ function ChatBar_InitializePluginDefaults()
 		end
 		i = i + 1;
 	end
+
+	-- ROLL 按钮必须始终存在，清除历史隐藏状态
+	ChatBar_HiddenButtons[CHATBAR_ROLL] = nil;
 end
 
 function ChatBar_InitializeSizeSettings()
@@ -171,6 +197,9 @@ function ChatBar_InitializeSizeSettings()
 	end
 	if (type(ChatBar_TrackingMode) ~= "string") then
 		ChatBar_TrackingMode = "modern";
+	end
+	if (ChatBar_ChannelSort ~= "name") and (ChatBar_ChannelSort ~= "name_desc") then
+		ChatBar_ChannelSort = "number";
 	end
 
 	ChatBar_ButtonScale = nil;
@@ -282,6 +311,12 @@ function ChatBar_GetChatTypeColor(chatTypeInfo)
 	return ChatTypeInfo[chatTypeInfo.type] or ChatTypeInfo[chatTypeInfo.colorType] or ChatTypeInfo["SYSTEM"];
 end
 
+-- 始终固定在末尾的按钮（如 ROLL）不能拖拽，且始终排在最后
+function ChatBar_IsPinnedEntry(entryIndex)
+	local chatTypeInfo = entryIndex and ChatBar_ChatTypes[entryIndex];
+	return chatTypeInfo and chatTypeInfo.alwaysShow;
+end
+
 function ChatBar_GetFirstWord(s)
 	local firstWord, count = gsub(s, "%s.*", "");
 	return firstWord;
@@ -291,4 +326,341 @@ function ChatBar_Print(text)
 	local color = ChatTypeInfo["SYSTEM"];
 	local frame = SELECTED_CHAT_FRAME or DEFAULT_CHAT_FRAME;
 	frame:AddMessage(text, color.r, color.g, color.b);
+end
+
+--------------------------------------------------
+-- Hover fade (show on hover over chat window, hide otherwise)
+--------------------------------------------------
+
+function ChatBar_SetAlpha(alpha, instant)
+	if (not ChatBarFrame) then
+		return;
+	end
+	if (instant) then
+		ChatBarFrame:SetAlpha(alpha);
+		ChatBar_CurrentAlpha = alpha;
+		ChatBar_IsFading = false;
+	else
+		ChatBar_TargetAlpha = alpha;
+		ChatBar_IsFading = true;
+		ChatBar_FadeTimer = 0;
+	end
+end
+
+function ChatBar_ForceShow()
+	if (not ChatBar_FadeEnabled) then
+		return;
+	end
+	ChatBar_ManualShow = true;
+	ChatBar_ManualShowUntil = GetTime() + 10;
+	ChatBar_SetAlpha(CHAT_BAR_ALPHA_SHOWN, true);
+end
+
+function ChatBar_ForceHide()
+	if (not ChatBar_FadeEnabled) then
+		return;
+	end
+	ChatBar_ManualShow = false;
+	ChatBar_SetAlpha(CHAT_BAR_ALPHA_HIDDEN, true);
+end
+
+function ChatBar_Toggle_FadeEffect()
+	ChatBar_FadeEnabled = not ChatBar_FadeEnabled;
+	if (ChatBar_FadeEnabled) then
+		if (not ChatBar_IsHovering) and (not ChatBar_ManualShow) then
+			ChatBar_SetAlpha(CHAT_BAR_ALPHA_HIDDEN, true);
+		end
+	else
+		ChatBar_SetAlpha(CHAT_BAR_ALPHA_SHOWN, true);
+	end
+	local status = ChatBar_FadeEnabled and CHATBAR_FADE_ON or CHATBAR_FADE_OFF;
+	DEFAULT_CHAT_FRAME:AddMessage("ChatBar: " .. (CHATBAR_MENU_MAIN_FADE or "Auto-hide") .. " " .. status, 1, 1, 0);
+end
+
+function ChatBar_InitializeFade()
+	if (not ChatBarFrame) then
+		return;
+	end
+	ChatBarFrame:Show();
+	if (ChatBar_FadeEnabled == nil) then
+		ChatBar_FadeEnabled = true;
+	end
+	ChatBarFrame.lastHoverCheck = 0;
+	ChatBar_SetAlpha(CHAT_BAR_ALPHA_SHOWN, true);
+	if (ChatBar_FadeEnabled) then
+		ChatBar_SetAlpha(CHAT_BAR_ALPHA_HIDDEN, true);
+	end
+end
+
+function ChatBar_IsMouseOverFrame(frame)
+	if (not frame) or (not frame:IsVisible()) then
+		return false;
+	end
+	if (not frame.GetLeft) or (not frame.GetRight) or (not frame.GetTop) or (not frame.GetBottom) then
+		return false;
+	end
+
+	local scale = 1.0;
+	if (UIParent and UIParent.GetScale) then
+		scale = UIParent:GetScale() or 1.0;
+	end
+
+	local x, y = GetCursorPosition();
+	if (not x) or (not y) then
+		return false;
+	end
+	x = x / scale;
+	y = y / scale;
+
+	local left, right, top, bottom;
+	local success = pcall(function()
+		left = frame:GetLeft();
+		right = frame:GetRight();
+		top = frame:GetTop();
+		bottom = frame:GetBottom();
+	end);
+	if (not success) or (not left) or (not right) or (not top) or (not bottom) then
+		return false;
+	end
+
+	local hoverExtend = CHAT_BAR_HOVER_ZONE_EXTEND;
+	left = left - hoverExtend;
+	right = right + hoverExtend;
+	bottom = bottom - hoverExtend;
+	top = top + hoverExtend;
+
+	return (x >= left) and (x <= right) and (y >= bottom) and (y <= top);
+end
+
+-- 返回当前鼠标下方可见按钮的编号（1..N），用于拖拽排序的落点检测
+function ChatBar_GetButtonIndexAtCursor()
+	local scale = 1.0;
+	if (UIParent and UIParent.GetScale) then
+		scale = UIParent:GetScale() or 1.0;
+	end
+	local x, y = GetCursorPosition();
+	if (not x) or (not y) then
+		return nil;
+	end
+	x = x / scale;
+	y = y / scale;
+
+	local i;
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		local button = getglobal("ChatBarFrameButton" .. i);
+		if (button and button:IsVisible() and button.ChatID) then
+			local left = button:GetLeft();
+			local right = button:GetRight();
+			local bottom = button:GetBottom();
+			local top = button:GetTop();
+			if (left and right and bottom and top) then
+				if (x >= left) and (x <= right) and (y >= bottom) and (y <= top) then
+					return i;
+				end
+			end
+		end
+	end
+	return nil;
+end
+
+function ChatBar_GetChatFrameFullArea()
+	local frames = {};
+	local i;
+	for i = 1, 10 do
+		local chatFrame = getglobal("ChatFrame" .. i);
+		if (chatFrame and chatFrame:IsVisible()) then
+			table.insert(frames, chatFrame);
+		end
+	end
+
+	for i = 1, 10 do
+		local chatFrame = getglobal("ChatFrame" .. i);
+		if (chatFrame and chatFrame.editBox and chatFrame.editBox:IsVisible()) then
+			table.insert(frames, chatFrame.editBox);
+		end
+	end
+
+	local chatBackground = getglobal("ChatFrame1Background");
+	if (chatBackground and chatBackground:IsVisible()) then
+		table.insert(frames, chatBackground);
+	end
+
+	local chatContainer = getglobal("ChatFrame1ButtonFrame");
+	if (chatContainer and chatContainer:IsVisible()) then
+		table.insert(frames, chatContainer);
+	end
+
+	if (DEFAULT_CHAT_FRAME) then
+		local parent = DEFAULT_CHAT_FRAME:GetParent();
+		if (parent and parent:IsVisible() and parent ~= UIParent) then
+			table.insert(frames, parent);
+		end
+	end
+
+	return frames;
+end
+
+function ChatBar_CheckMouseOverChatArea()
+	if (ChatBarFrame and ChatBar_IsMouseOverFrame(ChatBarFrame)) then
+		return true;
+	end
+
+	local i;
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		local button = getglobal("ChatBarFrameButton" .. i);
+		if (button and button:IsVisible() and ChatBar_IsMouseOverFrame(button)) then
+			return true;
+		end
+	end
+
+	local chatFrames = ChatBar_GetChatFrameFullArea();
+	for _, frame in ipairs(chatFrames) do
+		if (ChatBar_IsMouseOverFrame(frame)) then
+			return true;
+		end
+	end
+
+	return false;
+end
+
+function ChatBar_FadeOnUpdate(elapsed)
+	if (ChatBar_IsFading) and (ChatBar_CurrentAlpha ~= ChatBar_TargetAlpha) then
+		ChatBar_FadeTimer = ChatBar_FadeTimer + elapsed;
+		local progress = ChatBar_FadeTimer / CHAT_BAR_ALPHA_FADE_TIME;
+		if (progress > 1) then
+			progress = 1;
+		end
+		local newAlpha = ChatBar_CurrentAlpha + (ChatBar_TargetAlpha - ChatBar_CurrentAlpha) * progress;
+		if (ChatBarFrame) then
+			ChatBarFrame:SetAlpha(newAlpha);
+		end
+		ChatBar_CurrentAlpha = newAlpha;
+		if (progress >= 1) then
+			ChatBar_IsFading = false;
+		end
+	end
+
+	if (not ChatBar_FadeEnabled) then
+		return;
+	end
+
+	if (ChatBar_ManualShow) and (GetTime() >= ChatBar_ManualShowUntil) then
+		ChatBar_ManualShow = false;
+	end
+
+	if (not ChatBarFrame.lastHoverCheck) or ((GetTime() - ChatBarFrame.lastHoverCheck) > 0.05) then
+		ChatBarFrame.lastHoverCheck = GetTime();
+		local isOverChatArea = ChatBar_CheckMouseOverChatArea();
+		if (isOverChatArea) then
+			ChatBar_IsHovering = true;
+			ChatBar_HoverTimer = 0;
+			if (ChatBar_CurrentAlpha < CHAT_BAR_ALPHA_SHOWN) then
+				ChatBar_SetAlpha(CHAT_BAR_ALPHA_SHOWN, false);
+			end
+		else
+			if (not ChatBar_ManualShow) then
+				if (ChatBar_IsHovering) then
+					ChatBar_IsHovering = false;
+					ChatBar_HoverTimer = GetTime();
+				end
+				local timePassed = GetTime() - ChatBar_HoverTimer;
+				if (timePassed >= CHAT_BAR_HOVER_DELAY) then
+					if (ChatBar_CurrentAlpha > CHAT_BAR_ALPHA_HIDDEN) then
+						ChatBar_SetAlpha(CHAT_BAR_ALPHA_HIDDEN, false);
+					end
+				end
+			end
+		end
+	end
+end
+
+--------------------------------------------------
+-- 文字渐隐：悬停按钮时淡入按钮短文字，移开后淡出
+--------------------------------------------------
+
+function ChatBar_TextFadeIn(button)
+	local prevButton = ChatBar_HoveredButton;
+	if (prevButton and prevButton ~= button and prevButton.Text) then
+		prevButton.Text:SetAlpha(0);
+		prevButton.Text:Hide();
+	end
+	ChatBar_HoveredButton = button;
+	if (button.Text) then
+		button.Text:Show();
+		button.Text:SetAlpha(ChatBar_TextFadeAlpha);
+	end
+	ChatBar_TextFadeTarget = 1.0;
+	ChatBar_TextFadeTimer = 0;
+	ChatBar_TextFadeIsFading = true;
+end
+
+function ChatBar_TextFadeOut()
+	if (not ChatBar_HoveredButton) then
+		return;
+	end
+	ChatBar_TextFadeTarget = 0.0;
+	ChatBar_TextFadeTimer = 0;
+	ChatBar_TextFadeIsFading = true;
+end
+
+function ChatBar_TextFadeOnUpdate(elapsed)
+	if (not ChatBar_TextFadeIsFading) then
+		return;
+	end
+	ChatBar_TextFadeTimer = ChatBar_TextFadeTimer + elapsed;
+	local progress = ChatBar_TextFadeTimer / CHAT_BAR_TEXTFADE_TIME;
+	if (progress > 1) then
+		progress = 1;
+	end
+	local newAlpha = ChatBar_TextFadeAlpha + (ChatBar_TextFadeTarget - ChatBar_TextFadeAlpha) * progress;
+	ChatBar_TextFadeAlpha = newAlpha;
+	local button = ChatBar_HoveredButton;
+	if (button and button.Text) then
+		button.Text:SetAlpha(newAlpha);
+	end
+	if (progress >= 1) then
+		ChatBar_TextFadeIsFading = false;
+		if (ChatBar_TextFadeTarget <= 0) then
+			if (button and button.Text) then
+				button.Text:Hide();
+			end
+			ChatBar_HoveredButton = nil;
+		end
+	end
+end
+
+function ChatBar_Toggle_HoverText()
+	ChatBar_HoverTextEnabled = not ChatBar_HoverTextEnabled;
+	ChatBar_HoveredButton = nil;
+	ChatBar_TextFadeIsFading = false;
+	if (ChatBar_HoverTextEnabled) then
+		ChatBar_TextFadeAlpha = 0.0;
+	else
+		ChatBar_TextFadeAlpha = 1.0;
+	end
+	ChatBar_UpdateButtonText();
+end
+
+--------------------------------------------------
+-- Slash commands
+--------------------------------------------------
+
+SLASH_CHATBAR1 = "/chatbar";
+SLASH_CHATBAR2 = "/cb";
+SlashCmdList["CHATBAR"] = function(msg)
+	if (msg == "fade") then
+		ChatBar_Toggle_FadeEffect();
+	elseif (msg == "show") then
+		ChatBar_ForceShow();
+		DEFAULT_CHAT_FRAME:AddMessage("ChatBar: " .. (CHATBAR_FADE_ON or "shown") .. " (10s)", 1, 1, 0);
+	elseif (msg == "hide") then
+		ChatBar_ForceHide();
+		DEFAULT_CHAT_FRAME:AddMessage("ChatBar: " .. (CHATBAR_FADE_OFF or "hidden"), 1, 1, 0);
+	elseif (msg == "config") or (msg == "options") then
+		ChatBar_ShowOptionsPanel();
+	else
+		DEFAULT_CHAT_FRAME:AddMessage("ChatBar: /cb config - " .. (CHATBAR_MENU_MAIN_TITLE or "options"), 1, 1, 0);
+		DEFAULT_CHAT_FRAME:AddMessage("ChatBar: /cb fade - " .. (CHATBAR_MENU_MAIN_FADE or "auto-hide"), 1, 1, 0);
+		DEFAULT_CHAT_FRAME:AddMessage("ChatBar: /cb show - show 10s, /cb hide - hide", 1, 1, 0);
+	end
 end

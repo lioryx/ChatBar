@@ -46,7 +46,17 @@ local function ChatBar_UpdateButtonFace(buttonIndex)
 	end
 
 	if (ChatBar_ShouldShowButtonText() and chatTypeInfo) then
-		text:Show();
+		if (ChatBar_HoverTextEnabled) and (not ChatBar_ShouldCenterButtonText()) then
+			if (button == ChatBar_HoveredButton) then
+				text:Show();
+				text:SetAlpha(ChatBar_TextFadeAlpha);
+			else
+				text:Hide();
+			end
+		else
+			text:Show();
+			text:SetAlpha(1);
+		end
 	else
 		text:Hide();
 	end
@@ -109,6 +119,7 @@ function ChatBar_OnEvent(event)
 	elseif (event == "VARIABLES_LOADED") then
 		ChatBar_InitializeSizeSettings();
 		ChatBar_InitializePluginDefaults();
+		ChatBar_InitializeFade();
 		ChatBar_UpdateArt();
 		ChatBar_UpdateButtonOrientation();
 		ChatBar_UpdateButtonSizes();
@@ -142,8 +153,8 @@ function ChatBar_OnUpdate(elapsed)
 			ChatBarFrame.isSliding = nil;
 			this.velocity = 0;
 			if (ChatBar_VerticalDisplay_Sliding or ChatBar_AlternateDisplay_Sliding) and
-				(this:GetWidth() <= (ChatBar_GetCollapsedBarSize() + 1)) and
-				(this:GetHeight() <= (ChatBar_GetCollapsedBarSize() + 1)) then
+				(this:GetWidth() <= (ChatBar_ButtonWidth + 1)) and
+				(this:GetHeight() <= (ChatBar_ButtonHeight + 1)) then
 				if (ChatBar_VerticalDisplay_Sliding) then
 					ChatBar_VerticalDisplay_Sliding = nil;
 					ChatBar_Toggle_VerticalButtonOrientation();
@@ -179,6 +190,9 @@ function ChatBar_OnUpdate(elapsed)
 			this.count = this.count + 1;
 		end
 	end
+
+	ChatBar_FadeOnUpdate(elapsed);
+	ChatBar_TextFadeOnUpdate(elapsed);
 end
 
 function ChatBar_GetSize()
@@ -197,23 +211,289 @@ function ChatBar_SetSize(size)
 	end
 end
 
+local function ChatBar_GetChannelNumberFromType(typeString)
+	local _, _, channelIndex = string.find(typeString, "^CHANNEL(%d+)$");
+	if (channelIndex) then
+		return tonumber(channelIndex);
+	end
+	return nil;
+end
+
+local function ChatBar_CompareChannelTypes(typeA, typeB)
+	local numA = ChatBar_GetChannelNumberFromType(typeA) or 0;
+	local numB = ChatBar_GetChannelNumberFromType(typeB) or 0;
+	if (ChatBar_ChannelSort == "name") or (ChatBar_ChannelSort == "name_desc") then
+		local _, nameA = GetChannelName(numA);
+		local _, nameB = GetChannelName(numB);
+		if (not nameA) then
+			nameA = "";
+		end
+		if (not nameB) then
+			nameB = "";
+		end
+		if (nameA ~= nameB) then
+			if (ChatBar_ChannelSort == "name_desc") then
+				return nameA > nameB;
+			end
+			return nameA < nameB;
+		end
+	end
+	return numA < numB;
+end
+
+local function ChatBar_SortChannelEntries(entries)
+	local sorted = {};
+	local i;
+	for i = 1, table.getn(entries) do
+		sorted[i] = entries[i];
+	end
+	table.sort(sorted, function(a, b)
+		return ChatBar_CompareChannelTypes(ChatBar_ChatTypes[a].type, ChatBar_ChatTypes[b].type);
+	end);
+	return sorted;
+end
+
+-- 默认顺序：非频道条目保持原位，频道组按 ChatBar_ChannelSort 排序
+local function ChatBar_GetBaseDisplayOrder()
+	local order = {};
+	local channelEntries = {};
+	local firstChannelIndex = nil;
+	local lastChannelIndex = nil;
+	local i;
+	local count = table.getn(ChatBar_ChatTypes);
+
+	for i = 1, count do
+		if (ChatBar_GetChannelNumberFromType(ChatBar_ChatTypes[i].type)) then
+			if (not firstChannelIndex) then
+				firstChannelIndex = i;
+			end
+			lastChannelIndex = i;
+			table.insert(channelEntries, i);
+		end
+	end
+
+	if (not firstChannelIndex) then
+		for i = 1, count do
+			table.insert(order, i);
+		end
+		return order;
+	end
+
+	for i = 1, firstChannelIndex - 1 do
+		table.insert(order, i);
+	end
+
+	local sorted = ChatBar_SortChannelEntries(channelEntries);
+	for i = 1, table.getn(sorted) do
+		table.insert(order, sorted[i]);
+	end
+
+	for i = lastChannelIndex + 1, count do
+		table.insert(order, i);
+	end
+
+	return order;
+end
+
+local function ChatBar_GetEntryIndexByType(typeString)
+	local i;
+	local count = table.getn(ChatBar_ChatTypes);
+	for i = 1, count do
+		if (ChatBar_ChatTypes[i].type == typeString) then
+			return i;
+		end
+	end
+	return nil;
+end
+
+function ChatBar_GetDisplayOrder()
+	local baseOrder = ChatBar_GetBaseDisplayOrder();
+	local order = {};
+	local seen = {};
+	local i;
+
+	-- 1. 用户拖拽出来的手动顺序（跳过固定末尾的条目）
+	if (type(ChatBar_ButtonOrder) == "table") then
+		for i = 1, table.getn(ChatBar_ButtonOrder) do
+			local entryIndex = ChatBar_GetEntryIndexByType(ChatBar_ButtonOrder[i]);
+			if (entryIndex) and (not ChatBar_IsPinnedEntry(entryIndex)) and (not seen[entryIndex]) then
+				table.insert(order, entryIndex);
+				seen[entryIndex] = true;
+			end
+		end
+	end
+
+	-- 2. 其余未手动排序的条目按默认顺序补齐
+	for i = 1, table.getn(baseOrder) do
+		local entryIndex = baseOrder[i];
+		if (not seen[entryIndex]) and (not ChatBar_IsPinnedEntry(entryIndex)) then
+			table.insert(order, entryIndex);
+			seen[entryIndex] = true;
+		end
+	end
+
+	-- 3. 固定末尾的条目（ROLL）永远排在最后
+	for i = 1, table.getn(baseOrder) do
+		local entryIndex = baseOrder[i];
+		if (ChatBar_IsPinnedEntry(entryIndex)) then
+			table.insert(order, entryIndex);
+		end
+	end
+
+	return order;
+end
+
+-- 把可见按钮 sourceButton 拖到 targetButton 的位置，并保存为手动顺序
+function ChatBar_MoveButtonToPosition(sourceButton, targetButton)
+	local visibleTypes = {};
+	local i;
+	for i = 1, CHAT_BAR_MAX_BUTTONS do
+		local button = getglobal("ChatBarFrameButton" .. i);
+		if (button and button:IsVisible() and button.ChatID) then
+			table.insert(visibleTypes, ChatBar_ChatTypes[button.ChatID].type);
+		else
+			break;
+		end
+	end
+
+	if (not visibleTypes[sourceButton]) or (not visibleTypes[targetButton]) then
+		return;
+	end
+
+	local moved = visibleTypes[sourceButton];
+	table.remove(visibleTypes, sourceButton);
+	table.insert(visibleTypes, targetButton, moved);
+
+	-- 保存时去掉固定末尾条目，GetDisplayOrder 会再把它们追加到最后
+	local savedOrder = {};
+	for i = 1, table.getn(visibleTypes) do
+		local typeString = visibleTypes[i];
+		local entryIndex = ChatBar_GetEntryIndexByType(typeString);
+		if (entryIndex) and (not ChatBar_IsPinnedEntry(entryIndex)) then
+			table.insert(savedOrder, typeString);
+		end
+	end
+	ChatBar_ButtonOrder = savedOrder;
+	ChatBar_UpdateButtons();
+end
+
+-- 频道排序下拉框变化时，重新排序手动顺序里的频道条目
+function ChatBar_ApplyChannelSortToManualOrder()
+	if (type(ChatBar_ButtonOrder) ~= "table") then
+		return;
+	end
+	local channelTypes = {};
+	local i;
+	for i = 1, table.getn(ChatBar_ButtonOrder) do
+		local typeString = ChatBar_ButtonOrder[i];
+		if (ChatBar_GetChannelNumberFromType(typeString)) then
+			table.insert(channelTypes, typeString);
+		end
+	end
+	if (table.getn(channelTypes) <= 1) then
+		return;
+	end
+
+	table.sort(channelTypes, function(a, b)
+		return ChatBar_CompareChannelTypes(a, b);
+	end);
+
+	local newOrder = {};
+	local channelIndex = 1;
+	for i = 1, table.getn(ChatBar_ButtonOrder) do
+		local typeString = ChatBar_ButtonOrder[i];
+		if (ChatBar_GetChannelNumberFromType(typeString)) then
+			table.insert(newOrder, channelTypes[channelIndex]);
+			channelIndex = channelIndex + 1;
+		else
+			table.insert(newOrder, typeString);
+		end
+	end
+	ChatBar_ButtonOrder = newOrder;
+end
+
+-- 重置排序：按预设顺序排列所有按钮（ROLL 固定最后）
+function ChatBar_ResetButtonOrder()
+	local order = {};
+	local seen = {};
+	local i;
+	local count = table.getn(ChatBar_ChatTypes);
+	local coreTypes = {
+		"SAY", "YELL", "WHISPER", "GUILD", "OFFICER", "HARDCORE",
+		"PARTY", "RAID", "RAID_WARNING", "BATTLEGROUND",
+	};
+
+	ChatBar_ChannelSort = "number";
+
+	local function addType(typeName)
+		local entryIndex = ChatBar_GetEntryIndexByType(typeName);
+		if (entryIndex) and (not seen[entryIndex]) then
+			table.insert(order, typeName);
+			seen[entryIndex] = true;
+		end
+	end
+
+	-- 1. 固定核心聊天类型（按指定顺序）
+	for i = 1, table.getn(coreTypes) do
+		addType(coreTypes[i]);
+	end
+
+	-- 2. 其余核心类型（如 EMOTE）按原表顺序补齐
+	for i = 1, count do
+		local chatTypeInfo = ChatBar_ChatTypes[i];
+		local typeName = chatTypeInfo.type;
+		if (not ChatBar_IsPinnedEntry(i)) and (not ChatBar_GetChannelNumberFromType(typeName)) and
+			(string.sub(typeName, 1, 3) ~= "CB_") and (not seen[i]) then
+			table.insert(order, typeName);
+			seen[i] = true;
+		end
+	end
+
+	-- 3. 动态频道（按编号顺序）
+	for i = 1, count do
+		local chatTypeInfo = ChatBar_ChatTypes[i];
+		local typeName = chatTypeInfo.type;
+		if (ChatBar_GetChannelNumberFromType(typeName)) and (not seen[i]) then
+			table.insert(order, typeName);
+			seen[i] = true;
+		end
+	end
+
+	-- 4. 插件频道（按原表顺序）
+	for i = 1, count do
+		local chatTypeInfo = ChatBar_ChatTypes[i];
+		local typeName = chatTypeInfo.type;
+		if (string.sub(typeName, 1, 3) == "CB_") and (not seen[i]) then
+			table.insert(order, typeName);
+			seen[i] = true;
+		end
+	end
+
+	ChatBar_ButtonOrder = order;
+	ChatBar_UpdateButtons();
+end
+
 function ChatBar_UpdateButtons()
 	ChatBar_BarTypes = {};
-	local i = 1;
 	local buttonIndex = 1;
-	while (ChatBar_ChatTypes[i]) and (buttonIndex <= CHAT_BAR_MAX_BUTTONS) do
-		if (ChatBar_ChatTypes[i].show()) then
-			local chatTypeInfo = ChatBar_ChatTypes[i];
+	local displayOrder = ChatBar_GetDisplayOrder();
+	local i;
+	for i = 1, table.getn(displayOrder) do
+		if (buttonIndex > CHAT_BAR_MAX_BUTTONS) then
+			break;
+		end
+		local entryIndex = displayOrder[i];
+		local chatTypeInfo = ChatBar_ChatTypes[entryIndex];
+		if (chatTypeInfo.show()) then
 			local info = ChatBar_GetChatTypeColor(chatTypeInfo);
-			ChatBar_BarTypes[ChatBar_ChatTypes[i].type] = buttonIndex;
+			ChatBar_BarTypes[chatTypeInfo.type] = buttonIndex;
 			getglobal("ChatBarFrameButton" .. buttonIndex .. "Highlight"):SetVertexColor(info.r, info.g, info.b);
 			getglobal("ChatBarFrameButton" .. buttonIndex .. "Flash"):SetVertexColor(info.r, info.g, info.b);
-			getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = i;
+			getglobal("ChatBarFrameButton" .. buttonIndex).ChatID = entryIndex;
 			getglobal("ChatBarFrameButton" .. buttonIndex):Show();
 			ChatBar_UpdateButtonFace(buttonIndex);
 			buttonIndex = buttonIndex + 1;
 		end
-		i = i + 1;
 	end
 	local size = ChatBar_GetBarSizeForCount(buttonIndex - 1);
 	if (ChatBar_VerticalDisplay) then
@@ -261,6 +541,24 @@ function ChatBar_UpdateButtonSizes()
 	end
 end
 
+local function ChatBar_SetButtonTextPoint(button)
+	if (ChatBar_ShouldCenterButtonText()) then
+		button.Text:SetPoint("CENTER", button);
+	elseif (ChatBar_VerticalDisplay) then
+		if (ChatBar_ReverseTextPosition) then
+			button.Text:SetPoint("LEFT", button, "RIGHT", 0, 0);
+		else
+			button.Text:SetPoint("RIGHT", button, "LEFT", 0, 0);
+		end
+	else
+		if (ChatBar_ReverseTextPosition) then
+			button.Text:SetPoint("TOP", button, "BOTTOM", 0, 0);
+		else
+			button.Text:SetPoint("BOTTOM", button, "TOP", 0, 0);
+		end
+	end
+end
+
 function ChatBar_UpdateButtonOrientation()
 	local button = ChatBarFrameButton1;
 	button:ClearAllPoints();
@@ -271,22 +569,14 @@ function ChatBar_UpdateButtonOrientation()
 		else
 			button:SetPoint("BOTTOM", "ChatBarFrame", "BOTTOM", 0, CHAT_BAR_EDGE_SIZE);
 		end
-		if (ChatBar_ShouldCenterButtonText()) then
-			button.Text:SetPoint("CENTER", button);
-		else
-			button.Text:SetPoint("RIGHT", button, "LEFT", 0, 0);
-		end
+		ChatBar_SetButtonTextPoint(button);
 	else
 		if (ChatBar_AlternateOrientation) then
 			button:SetPoint("RIGHT", "ChatBarFrame", "RIGHT", -CHAT_BAR_EDGE_SIZE, 0);
 		else
 			button:SetPoint("LEFT", "ChatBarFrame", "LEFT", CHAT_BAR_EDGE_SIZE, 0);
 		end
-		if (ChatBar_ShouldCenterButtonText()) then
-			button.Text:SetPoint("CENTER", button);
-		else
-			button.Text:SetPoint("BOTTOM", button, "TOP");
-		end
+		ChatBar_SetButtonTextPoint(button);
 	end
 	for i = 2, CHAT_BAR_MAX_BUTTONS do
 		button = getglobal("ChatBarFrameButton" .. i);
@@ -298,22 +588,14 @@ function ChatBar_UpdateButtonOrientation()
 			else
 				button:SetPoint("BOTTOM", "ChatBarFrameButton" .. (i - 1), "TOP", 0, ChatBar_GetButtonSpacing());
 			end
-			if (ChatBar_ShouldCenterButtonText()) then
-				button.Text:SetPoint("CENTER", button);
-			else
-				button.Text:SetPoint("RIGHT", button, "LEFT");
-			end
+			ChatBar_SetButtonTextPoint(button);
 		else
 			if (ChatBar_AlternateOrientation) then
 				button:SetPoint("RIGHT", "ChatBarFrameButton" .. (i - 1), "LEFT", -ChatBar_GetButtonSpacing(), 0);
 			else
 				button:SetPoint("LEFT", "ChatBarFrameButton" .. (i - 1), "RIGHT", ChatBar_GetButtonSpacing(), 0);
 			end
-			if (ChatBar_ShouldCenterButtonText()) then
-				button.Text:SetPoint("CENTER", button);
-			else
-				button.Text:SetPoint("BOTTOM", button, "TOP");
-			end
+			ChatBar_SetButtonTextPoint(button);
 		end
 	end
 end
@@ -576,6 +858,11 @@ end
 
 function ChatBar_Toggle_TextOrientation()
 	ChatBar_TextOnButtonDisplay = not ChatBar_TextOnButtonDisplay;
+	ChatBar_UpdateButtonOrientation();
+end
+
+function ChatBar_Toggle_ReverseTextPosition()
+	ChatBar_ReverseTextPosition = not ChatBar_ReverseTextPosition;
 	ChatBar_UpdateButtonOrientation();
 end
 

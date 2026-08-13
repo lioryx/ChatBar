@@ -70,6 +70,24 @@ function ChatBar_CreateFrameMenu()
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 
 	info = {};
+	info.text = CHATBAR_MENU_MAIN_REVERSETEXT;
+	info.func = ChatBar_Toggle_ReverseTextPosition;
+	info.keepShownOnClick = 1;
+	if (ChatBar_ReverseTextPosition) then
+		info.checked = 1;
+	end
+	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
+
+	info = {};
+	info.text = CHATBAR_MENU_MAIN_HOVERTEXT;
+	info.func = ChatBar_Toggle_HoverText;
+	info.keepShownOnClick = 1;
+	if (ChatBar_HoverTextEnabled) then
+		info.checked = 1;
+	end
+	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
+
+	info = {};
 	info.text = CHATBAR_MENU_MAIN_CHANNELID;
 	info.func = ChatBar_Toggle_TextChannelNumbers;
 	info.keepShownOnClick = 1;
