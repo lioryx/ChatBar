@@ -551,19 +551,23 @@ function ChatBar_UpdateButtonSizes()
 end
 
 local function ChatBar_SetButtonTextPoint(button)
+	local gap = ChatBar_TextGap;
+	if (type(gap) ~= "number") then
+		gap = CHAT_BAR_TEXT_GAP;
+	end
 	if (ChatBar_ShouldCenterButtonText()) then
 		button.Text:SetPoint("CENTER", button);
 	elseif (ChatBar_VerticalDisplay) then
 		if (ChatBar_ReverseTextPosition) then
-			button.Text:SetPoint("LEFT", button, "RIGHT", 0, 0);
+			button.Text:SetPoint("LEFT", button, "RIGHT", gap, 0);
 		else
-			button.Text:SetPoint("RIGHT", button, "LEFT", 0, 0);
+			button.Text:SetPoint("RIGHT", button, "LEFT", -gap, 0);
 		end
 	else
 		if (ChatBar_ReverseTextPosition) then
-			button.Text:SetPoint("TOP", button, "BOTTOM", 0, 0);
+			button.Text:SetPoint("TOP", button, "BOTTOM", 0, -gap);
 		else
-			button.Text:SetPoint("BOTTOM", button, "TOP", 0, 0);
+			button.Text:SetPoint("BOTTOM", button, "TOP", 0, gap);
 		end
 	end
 end

@@ -18,7 +18,7 @@ CHAT_BAR_BUTTON_SIZE = 16; -- legacy default (square); migrated into width/heigh
 CHAT_BAR_BUTTON_WIDTH = 16;
 CHAT_BAR_BUTTON_HEIGHT = 16;
 CHAT_BAR_BUTTON_TEXT_SIZE = 12;
-CHAT_BAR_BUTTON_PADDING = 0;
+CHAT_BAR_BUTTON_PADDING = 2;
 CHAT_BAR_EDGE_SIZE = 10;   -- amount of space that the bar extends past the first/last button
 CHAT_BAR_MAX_BUTTONS = 45;
 CHAT_BAR_UPDATE_DELAY = 30;
@@ -37,16 +37,20 @@ CHAT_BAR_BUTTON_TEXT_SIZE_STEP = 1;
 CHAT_BAR_BUTTON_PADDING_MIN = 0;
 CHAT_BAR_BUTTON_PADDING_MAX = 10;
 CHAT_BAR_BUTTON_PADDING_STEP = 1;
+CHAT_BAR_TEXT_GAP = 0;
+CHAT_BAR_TEXT_GAP_MIN = 0;
+CHAT_BAR_TEXT_GAP_MAX = 12;
+CHAT_BAR_TEXT_GAP_STEP = 1;
 CHAT_BAR_COLORBAR_BORDER = 2;   -- default border size for ColorBars skin
 CHAT_BAR_COLORBAR_BORDER_MIN = 0;
 CHAT_BAR_COLORBAR_BORDER_MAX = 10;
 CHAT_BAR_COLORBAR_BORDER_STEP = 1;
 CHAT_BAR_COLORBAR_WIDTH = 38;   -- default width when entering ColorBars skin
-CHAT_BAR_COLORBAR_HEIGHT = 4;   -- default height when entering ColorBars skin
+CHAT_BAR_COLORBAR_HEIGHT = 8;   -- default height when entering ColorBars skin
 ChatBar_VerticalDisplay = false;
 ChatBar_AlternateOrientation = false;
 ChatBar_TextOnButtonDisplay = false;
-ChatBar_ButtonFlashing = true;
+ChatBar_ButtonFlashing = false;
 ChatBar_BarBorder = true;
 ChatBar_ButtonText = true;
 ChatBar_ReverseTextPosition = false;
@@ -63,6 +67,7 @@ ChatBar_ButtonWidth = CHAT_BAR_BUTTON_WIDTH;
 ChatBar_ButtonHeight = CHAT_BAR_BUTTON_HEIGHT;
 ChatBar_ButtonTextSize = CHAT_BAR_BUTTON_TEXT_SIZE;
 ChatBar_ButtonPadding = CHAT_BAR_BUTTON_PADDING;
+ChatBar_TextGap = CHAT_BAR_TEXT_GAP;
 ChatBar_ColorBarBorderSize = CHAT_BAR_COLORBAR_BORDER;
 ChatBar_CountdownLen = 6;
 ChatBar_TrackingMode = "modern";
@@ -247,6 +252,8 @@ function ChatBar_InitializeSizeSettings()
 		CHAT_BAR_BUTTON_TEXT_SIZE_MIN, CHAT_BAR_BUTTON_TEXT_SIZE_MAX, CHAT_BAR_BUTTON_TEXT_SIZE_STEP);
 	ChatBar_ButtonPadding = ChatBar_NormalizeSizeSetting(ChatBar_ButtonPadding, CHAT_BAR_BUTTON_PADDING,
 		CHAT_BAR_BUTTON_PADDING_MIN, CHAT_BAR_BUTTON_PADDING_MAX, CHAT_BAR_BUTTON_PADDING_STEP);
+	ChatBar_TextGap = ChatBar_NormalizeSizeSetting(ChatBar_TextGap, CHAT_BAR_TEXT_GAP,
+		CHAT_BAR_TEXT_GAP_MIN, CHAT_BAR_TEXT_GAP_MAX, CHAT_BAR_TEXT_GAP_STEP);
 	ChatBar_ColorBarBorderSize = ChatBar_NormalizeSizeSetting(ChatBar_ColorBarBorderSize, CHAT_BAR_COLORBAR_BORDER,
 		CHAT_BAR_COLORBAR_BORDER_MIN, CHAT_BAR_COLORBAR_BORDER_MAX, CHAT_BAR_COLORBAR_BORDER_STEP);
 

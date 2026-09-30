@@ -42,6 +42,100 @@ local function ChatBar_CreateOptionsValueRow(parent, name, labelText)
 	return row;
 end
 
+local function ChatBar_CreateOptionsSectionHeader(parent, name, labelText)
+	local header = CreateFrame("Frame", name, parent);
+	header:SetWidth(288);
+	header:SetHeight(16);
+	header.Label = header:CreateFontString(name .. "Label", "OVERLAY", "GameFontNormal");
+	header.Label:SetAllPoints(header);
+	header.Label:SetJustifyH("LEFT");
+	header.Label:SetText(labelText);
+	return header;
+end
+
+-- entries: { { frame = Frame, x = number, gap = number }, ... }
+-- hidden frames are skipped; x/gap are optional
+local function ChatBar_LayoutOptionStack(parent, entries, startX, startY, defaultGap)
+	local lastFrame = nil;
+	local lastX = startX;
+	local i;
+	local entry;
+	local frame;
+	local x;
+	local gap;
+
+	for i = 1, table.getn(entries) do
+		entry = entries[i];
+		frame = entry.frame;
+		if (frame) and (frame:IsShown()) then
+			x = entry.x;
+			if (x == nil) then
+				x = startX;
+			end
+			gap = entry.gap;
+			if (gap == nil) then
+				gap = defaultGap;
+			end
+			frame:ClearAllPoints();
+			if (lastFrame) then
+				frame:SetPoint("TOPLEFT", lastFrame, "BOTTOMLEFT", x - lastX, -gap);
+			else
+				frame:SetPoint("TOPLEFT", parent, "TOPLEFT", x, startY);
+			end
+			lastFrame = frame;
+			lastX = x;
+		end
+	end
+end
+
+local function ChatBar_SetCheckButtonEnabled(button, enabled)
+	if (enabled) then
+		button:Enable();
+	else
+		button:Disable();
+	end
+end
+
+local function ChatBar_UpdateValueRowButtons(row, value, minValue, maxValue, enabled)
+	local r;
+	local g;
+	local b;
+	if (not enabled) then
+		row.Minus:Disable();
+		row.Plus:Disable();
+		if (row.Label) then
+			if (GRAY_FONT_COLOR) then
+				row.Label:SetTextColor(GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b);
+			else
+				row.Label:SetTextColor(0.5, 0.5, 0.5);
+			end
+		end
+		return;
+	end
+	if (row.Label) then
+		if (NORMAL_FONT_COLOR) then
+			r = NORMAL_FONT_COLOR.r;
+			g = NORMAL_FONT_COLOR.g;
+			b = NORMAL_FONT_COLOR.b;
+		else
+			r = 1;
+			g = .82;
+			b = 0;
+		end
+		row.Label:SetTextColor(r, g, b);
+	end
+	if (value <= minValue) then
+		row.Minus:Disable();
+	else
+		row.Minus:Enable();
+	end
+	if (value >= maxValue) then
+		row.Plus:Disable();
+	else
+		row.Plus:Enable();
+	end
+end
+
 function ChatBar_OptionsCheckButton_OnClick()
 	if (this.optionFunc) then
 		this.optionFunc();
@@ -80,59 +174,6 @@ local function ChatBar_InitializeAltArtDropDown()
 		info.func = ChatBar_AltArtDropDown_OnClick;
 		UIDropDownMenu_AddButton(info);
 	end
-end
-
-local function ChatBar_GetChannelSortID()
-	if (ChatBar_ChannelSort == "name") then
-		return 2;
-	elseif (ChatBar_ChannelSort == "name_desc") then
-		return 3;
-	end
-	return 1;
-end
-
-local function ChatBar_GetChannelSortText()
-	if (ChatBar_ChannelSort == "name") then
-		return CHATBAR_CHANNELSORT_NAME or "By Name (A-Z)";
-	elseif (ChatBar_ChannelSort == "name_desc") then
-		return CHATBAR_CHANNELSORT_NAME_DESC or "By Name (Z-A)";
-	end
-	return CHATBAR_CHANNELSORT_NUMBER or "By Channel Number";
-end
-
-local function ChatBar_ChannelSortDropDown_OnClick()
-	if (this.value == 2) then
-		ChatBar_ChannelSort = "name";
-	elseif (this.value == 3) then
-		ChatBar_ChannelSort = "name_desc";
-	else
-		ChatBar_ChannelSort = "number";
-	end
-	ChatBar_ApplyChannelSortToManualOrder();
-	ChatBar_UpdateButtons();
-	ChatBar_UpdateOptionsPanel();
-end
-
-local function ChatBar_InitializeChannelSortDropDown()
-	local info;
-
-	info = {};
-	info.text = CHATBAR_CHANNELSORT_NUMBER or "By Channel Number";
-	info.value = 1;
-	info.func = ChatBar_ChannelSortDropDown_OnClick;
-	UIDropDownMenu_AddButton(info);
-
-	info = {};
-	info.text = CHATBAR_CHANNELSORT_NAME or "By Name (A-Z)";
-	info.value = 2;
-	info.func = ChatBar_ChannelSortDropDown_OnClick;
-	UIDropDownMenu_AddButton(info);
-
-	info = {};
-	info.text = CHATBAR_CHANNELSORT_NAME_DESC or "By Name (Z-A)";
-	info.value = 3;
-	info.func = ChatBar_ChannelSortDropDown_OnClick;
-	UIDropDownMenu_AddButton(info);
 end
 
 local function ChatBar_GetVisibilityEntries()
@@ -391,6 +432,25 @@ function ChatBar_IncreaseColorBarBorderSize()
 	ChatBar_AdjustColorBarBorderSize(CHAT_BAR_COLORBAR_BORDER_STEP);
 end
 
+local function ChatBar_AdjustTextGap(delta)
+	local newValue;
+	ChatBar_InitializeSizeSettings();
+	newValue = ChatBar_NormalizeSizeSetting(ChatBar_TextGap + delta, CHAT_BAR_TEXT_GAP,
+		CHAT_BAR_TEXT_GAP_MIN, CHAT_BAR_TEXT_GAP_MAX, CHAT_BAR_TEXT_GAP_STEP);
+	if (newValue ~= ChatBar_TextGap) then
+		ChatBar_TextGap = newValue;
+		ChatBar_RefreshButtonLayout();
+	end
+end
+
+function ChatBar_DecreaseTextGap()
+	ChatBar_AdjustTextGap(-CHAT_BAR_TEXT_GAP_STEP);
+end
+
+function ChatBar_IncreaseTextGap()
+	ChatBar_AdjustTextGap(CHAT_BAR_TEXT_GAP_STEP);
+end
+
 function ChatBar_UpdateOptionsPanel()
 	if (not ChatBarOptionsPanel) then
 		return;
@@ -400,6 +460,18 @@ function ChatBar_UpdateOptionsPanel()
 	local i;
 	local currentTab;
 	local colorBars = ChatBar_IsColorBarArt();
+	local textOnly = ChatBar_IsTextOnlyArt();
+	local octagon = ChatBar_IsOctagonArt();
+	local showText;
+	local centerText;
+	local forcedText;
+	local barBorderEnabled;
+	local textSizeEnabled;
+	local channelIdEnabled;
+	local textOnButtonsEnabled;
+	local reverseTextEnabled;
+	local textGapEnabled;
+	local hoverTextEnabled;
 	local squareMin;
 	local squareMax;
 	local widthMin;
@@ -436,26 +508,58 @@ function ChatBar_UpdateOptionsPanel()
 	if (colorBars) then
 		panel.ButtonHeightRow:Show();
 		panel.ColorBarBorderRow:Show();
-		panel.ButtonPaddingRow:ClearAllPoints();
-		panel.ButtonPaddingRow:SetPoint("TOPLEFT", panel.ButtonHeightRow, "BOTTOMLEFT", 0, -4);
-		panel.ColorBarBorderRow:ClearAllPoints();
-		panel.ColorBarBorderRow:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", 0, -4);
-		panel.BarBorder:ClearAllPoints();
-		panel.BarBorder:SetPoint("TOPLEFT", panel.ColorBarBorderRow, "BOTTOMLEFT", -4, -2);
+		panel.ButtonWidthRow.Label:SetText(CHATBAR_MENU_MAIN_BUTTONWIDTH);
 	else
 		panel.ButtonHeightRow:Hide();
 		panel.ColorBarBorderRow:Hide();
-		panel.ButtonPaddingRow:ClearAllPoints();
-		panel.ButtonPaddingRow:SetPoint("TOPLEFT", panel.ButtonWidthRow, "BOTTOMLEFT", 0, -4);
-		panel.BarBorder:ClearAllPoints();
-		panel.BarBorder:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", -4, -2);
+		panel.ButtonWidthRow.Label:SetText(CHATBAR_MENU_MAIN_BUTTONSIZE);
 	end
+
+	panel.SkinHeader.Label:SetText(CHATBAR_OPTIONS_SECTION_SKIN or "Skin");
+	panel.SizeHeader.Label:SetText(CHATBAR_OPTIONS_SECTION_SIZE or "Size");
+	panel.SpacingHeader.Label:SetText(CHATBAR_OPTIONS_SECTION_SPACING or "Spacing and Border");
+	panel.LayoutHeader.Label:SetText(CHATBAR_OPTIONS_SECTION_LAYOUT or "Layout");
+	panel.FeedbackHeader.Label:SetText(CHATBAR_OPTIONS_SECTION_FEEDBACK or "Feedback");
+	panel.TextGapRow.Label:SetText(CHATBAR_MENU_MAIN_TEXTGAP or "Text Spacing");
+
+	ChatBar_LayoutOptionStack(panel.AppearancePage, {
+		{ frame = panel.SkinHeader, x = 0, gap = 8 },
+		{ frame = panel.AltArtDropDownHolder, x = 0, gap = 4 },
+		{ frame = panel.SizeHeader, x = 0, gap = 10 },
+		{ frame = panel.ButtonWidthRow, x = 0, gap = 6 },
+		{ frame = panel.ButtonHeightRow, x = 0, gap = 4 },
+		{ frame = panel.SpacingHeader, x = 0, gap = 10 },
+		{ frame = panel.ButtonPaddingRow, x = 0, gap = 6 },
+		{ frame = panel.ColorBarBorderRow, x = 0, gap = 4 },
+		{ frame = panel.BarBorder, x = -4, gap = 4 },
+	}, 0, 0, 4);
+
+	ChatBar_LayoutOptionStack(panel.TextPage, {
+		{ frame = panel.ShowButtonText, x = -4, gap = 4 },
+		{ frame = panel.ButtonTextSizeRow, x = 0, gap = 4 },
+		{ frame = panel.ChannelNumbers, x = -4, gap = 4 },
+		{ frame = panel.TextOnButtons, x = -4, gap = 10 },
+		{ frame = panel.ReverseTextPosition, x = -4, gap = 2 },
+		{ frame = panel.TextGapRow, x = 0, gap = 4 },
+		{ frame = panel.HoverText, x = -4, gap = 10 },
+	}, 0, -4, 4);
+
+	ChatBar_LayoutOptionStack(panel.BehaviorPage, {
+		{ frame = panel.LayoutHeader, x = 0, gap = 8 },
+		{ frame = panel.VerticalButtons, x = -4, gap = 4 },
+		{ frame = panel.ReverseButtons, x = -4, gap = 2 },
+		{ frame = panel.ResetButton, x = 12, gap = 8 },
+		{ frame = panel.FeedbackHeader, x = 0, gap = 14 },
+		{ frame = panel.ButtonFlashing, x = -4, gap = 4 },
+		{ frame = panel.FadeEffect, x = -4, gap = 2 },
+	}, 0, 0, 4);
 
 	panel.ButtonWidthRow.Value:SetText(ChatBar_ButtonWidth);
 	panel.ButtonHeightRow.Value:SetText(ChatBar_ButtonHeight);
 	panel.ButtonTextSizeRow.Value:SetText(ChatBar_ButtonTextSize);
 	panel.ButtonPaddingRow.Value:SetText(ChatBar_ButtonPadding);
 	panel.ColorBarBorderRow.Value:SetText(ChatBar_ColorBarBorderSize);
+	panel.TextGapRow.Value:SetText(ChatBar_TextGap);
 
 	if (colorBars) then
 		widthMin = CHAT_BAR_BUTTON_WIDTH_MIN;
@@ -475,56 +579,31 @@ function ChatBar_UpdateOptionsPanel()
 		widthMax = squareMax;
 	end
 
-	if (ChatBar_ButtonWidth <= widthMin) then
-		panel.ButtonWidthRow.Minus:Disable();
-	else
-		panel.ButtonWidthRow.Minus:Enable();
-	end
-	if (ChatBar_ButtonWidth >= widthMax) then
-		panel.ButtonWidthRow.Plus:Disable();
-	else
-		panel.ButtonWidthRow.Plus:Enable();
-	end
-	if (ChatBar_ButtonHeight <= CHAT_BAR_BUTTON_HEIGHT_MIN) then
-		panel.ButtonHeightRow.Minus:Disable();
-	else
-		panel.ButtonHeightRow.Minus:Enable();
-	end
-	if (ChatBar_ButtonHeight >= CHAT_BAR_BUTTON_HEIGHT_MAX) then
-		panel.ButtonHeightRow.Plus:Disable();
-	else
-		panel.ButtonHeightRow.Plus:Enable();
-	end
-	if (ChatBar_ButtonTextSize <= CHAT_BAR_BUTTON_TEXT_SIZE_MIN) then
-		panel.ButtonTextSizeRow.Minus:Disable();
-	else
-		panel.ButtonTextSizeRow.Minus:Enable();
-	end
-	if (ChatBar_ButtonTextSize >= CHAT_BAR_BUTTON_TEXT_SIZE_MAX) then
-		panel.ButtonTextSizeRow.Plus:Disable();
-	else
-		panel.ButtonTextSizeRow.Plus:Enable();
-	end
-	if (ChatBar_ButtonPadding <= CHAT_BAR_BUTTON_PADDING_MIN) then
-		panel.ButtonPaddingRow.Minus:Disable();
-	else
-		panel.ButtonPaddingRow.Minus:Enable();
-	end
-	if (ChatBar_ButtonPadding >= CHAT_BAR_BUTTON_PADDING_MAX) then
-		panel.ButtonPaddingRow.Plus:Disable();
-	else
-		panel.ButtonPaddingRow.Plus:Enable();
-	end
-	if (ChatBar_ColorBarBorderSize <= CHAT_BAR_COLORBAR_BORDER_MIN) then
-		panel.ColorBarBorderRow.Minus:Disable();
-	else
-		panel.ColorBarBorderRow.Minus:Enable();
-	end
-	if (ChatBar_ColorBarBorderSize >= CHAT_BAR_COLORBAR_BORDER_MAX) then
-		panel.ColorBarBorderRow.Plus:Disable();
-	else
-		panel.ColorBarBorderRow.Plus:Enable();
-	end
+	showText = ChatBar_ShouldShowButtonText();
+	centerText = ChatBar_ShouldCenterButtonText();
+	forcedText = textOnly or octagon;
+	barBorderEnabled = (not textOnly) and (not octagon) and (not colorBars);
+	textSizeEnabled = showText;
+	channelIdEnabled = showText;
+	textOnButtonsEnabled = showText and (not forcedText);
+	reverseTextEnabled = showText and (not centerText);
+	textGapEnabled = showText and (not centerText);
+	hoverTextEnabled = showText and (not textOnly);
+
+	ChatBar_UpdateValueRowButtons(panel.ButtonWidthRow, ChatBar_ButtonWidth, widthMin, widthMax, true);
+	ChatBar_UpdateValueRowButtons(panel.ButtonHeightRow, ChatBar_ButtonHeight, CHAT_BAR_BUTTON_HEIGHT_MIN, CHAT_BAR_BUTTON_HEIGHT_MAX, colorBars);
+	ChatBar_UpdateValueRowButtons(panel.ButtonPaddingRow, ChatBar_ButtonPadding, CHAT_BAR_BUTTON_PADDING_MIN, CHAT_BAR_BUTTON_PADDING_MAX, true);
+	ChatBar_UpdateValueRowButtons(panel.ColorBarBorderRow, ChatBar_ColorBarBorderSize, CHAT_BAR_COLORBAR_BORDER_MIN, CHAT_BAR_COLORBAR_BORDER_MAX, colorBars);
+	ChatBar_UpdateValueRowButtons(panel.ButtonTextSizeRow, ChatBar_ButtonTextSize, CHAT_BAR_BUTTON_TEXT_SIZE_MIN, CHAT_BAR_BUTTON_TEXT_SIZE_MAX, textSizeEnabled);
+	ChatBar_UpdateValueRowButtons(panel.TextGapRow, ChatBar_TextGap, CHAT_BAR_TEXT_GAP_MIN, CHAT_BAR_TEXT_GAP_MAX, textGapEnabled);
+
+	ChatBar_SetCheckButtonEnabled(panel.BarBorder, barBorderEnabled);
+	ChatBar_SetCheckButtonEnabled(panel.ShowButtonText, not forcedText);
+	ChatBar_SetCheckButtonEnabled(panel.TextOnButtons, textOnButtonsEnabled);
+	ChatBar_SetCheckButtonEnabled(panel.ReverseTextPosition, reverseTextEnabled);
+	ChatBar_SetCheckButtonEnabled(panel.ChannelNumbers, channelIdEnabled);
+	ChatBar_SetCheckButtonEnabled(panel.HoverText, hoverTextEnabled);
+
 	local verticalChecked = ChatBar_VerticalDisplay;
 	local reverseChecked = ChatBar_AlternateOrientation;
 	-- 滑动动画结束前实际标志尚未翻转，勾选框显示即将生效的目标状态
@@ -557,13 +636,6 @@ function ChatBar_UpdateOptionsPanel()
 	UIDropDownMenu_SetSelectedID(panel.AltArtDropDown, ChatBar_AltArt);
 	UIDropDownMenu_SetText(getglobal("CHATBAR_SKIN" .. ChatBar_AltArt) or ChatBar_AltArtDirs[ChatBar_AltArt], panel.AltArtDropDown);
 
-	if (ChatBar_ChannelSort ~= "name") and (ChatBar_ChannelSort ~= "name_desc") then
-		ChatBar_ChannelSort = "number";
-	end
-	UIDropDownMenu_SetSelectedID(panel.ChannelSortDropDown, ChatBar_GetChannelSortID());
-	UIDropDownMenu_SetText(ChatBar_GetChannelSortText(), panel.ChannelSortDropDown);
-	panel.ChannelSortLabel:SetText(CHATBAR_OPTIONS_CHANNELS_SORT or "Channel Sort");
-
 	panel.ResetButton:SetText(CHATBAR_MENU_MAIN_RESET);
 	panel.AppearanceTab:SetText(CHATBAR_OPTIONS_TAB_APPEARANCE or "Skin");
 	panel.TextTab:SetText(CHATBAR_OPTIONS_TAB_TEXT or "Text");
@@ -573,7 +645,6 @@ function ChatBar_UpdateOptionsPanel()
 	panel.ChannelEmptyText:SetText(CHATBAR_OPTIONS_CHANNELS_EMPTY or "No chat channels are currently available.");
 	panel.ChannelSelectAllButton:SetText(CHATBAR_OPTIONS_CHANNELS_SELECTALL or "Select All");
 	panel.ChannelClearAllButton:SetText(CHATBAR_OPTIONS_CHANNELS_CLEARALL or "Clear All");
-	panel.ChannelResetSortButton:SetText(CHATBAR_OPTIONS_CHANNELS_RESETSORT or "Reset Sort");
 
 	ChatBar_UpdateChannelsPage(panel);
 
@@ -697,31 +768,37 @@ function ChatBar_CreateOptionsPanel()
 	panel.ChannelsPage:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -68);
 	panel.ChannelsPage:Hide();
 
-	panel.AltArtLabel = panel.AppearancePage:CreateFontString(panel:GetName() .. "AltArtLabel", "OVERLAY", "GameFontNormalSmall");
-	panel.AltArtLabel:SetPoint("TOPLEFT", panel.AppearancePage, "TOPLEFT", 12, 0);
-	panel.AltArtLabel:SetText(CHATBAR_MENU_MAIN_ALTART);
+	panel.SkinHeader = ChatBar_CreateOptionsSectionHeader(panel.AppearancePage, panel:GetName() .. "SkinHeader",
+		CHATBAR_OPTIONS_SECTION_SKIN or "Skin");
 
-	panel.AltArtDropDown = CreateFrame("Frame", panel:GetName() .. "AltArtDropDown", panel.AppearancePage, "UIDropDownMenuTemplate");
-	panel.AltArtDropDown:SetPoint("TOPLEFT", panel.AltArtLabel, "BOTTOMLEFT", -16, -2);
+	panel.AltArtDropDownHolder = CreateFrame("Frame", panel:GetName() .. "AltArtDropDownHolder", panel.AppearancePage);
+	panel.AltArtDropDownHolder:SetWidth(288);
+	panel.AltArtDropDownHolder:SetHeight(32);
+
+	panel.AltArtDropDown = CreateFrame("Frame", panel:GetName() .. "AltArtDropDown", panel.AltArtDropDownHolder, "UIDropDownMenuTemplate");
+	panel.AltArtDropDown:SetPoint("TOPLEFT", panel.AltArtDropDownHolder, "TOPLEFT", -16, 0);
 	UIDropDownMenu_SetWidth(180, panel.AltArtDropDown);
 	UIDropDownMenu_Initialize(panel.AltArtDropDown, ChatBar_InitializeAltArtDropDown);
 
+	panel.SizeHeader = ChatBar_CreateOptionsSectionHeader(panel.AppearancePage, panel:GetName() .. "SizeHeader",
+		CHATBAR_OPTIONS_SECTION_SIZE or "Size");
+
 	panel.ButtonWidthRow = ChatBar_CreateOptionsValueRow(panel.AppearancePage, panel:GetName() .. "ButtonWidthRow", CHATBAR_MENU_MAIN_BUTTONWIDTH);
-	panel.ButtonWidthRow:SetPoint("TOPLEFT", panel.AltArtDropDown, "BOTTOMLEFT", 16, -8);
 	panel.ButtonWidthRow.Minus.actionFunc = ChatBar_DecreaseButtonWidth;
 	panel.ButtonWidthRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 	panel.ButtonWidthRow.Plus.actionFunc = ChatBar_IncreaseButtonWidth;
 	panel.ButtonWidthRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
 	panel.ButtonHeightRow = ChatBar_CreateOptionsValueRow(panel.AppearancePage, panel:GetName() .. "ButtonHeightRow", CHATBAR_MENU_MAIN_BUTTONHEIGHT);
-	panel.ButtonHeightRow:SetPoint("TOPLEFT", panel.ButtonWidthRow, "BOTTOMLEFT", 0, -4);
 	panel.ButtonHeightRow.Minus.actionFunc = ChatBar_DecreaseButtonHeight;
 	panel.ButtonHeightRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 	panel.ButtonHeightRow.Plus.actionFunc = ChatBar_IncreaseButtonHeight;
 	panel.ButtonHeightRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
+	panel.SpacingHeader = ChatBar_CreateOptionsSectionHeader(panel.AppearancePage, panel:GetName() .. "SpacingHeader",
+		CHATBAR_OPTIONS_SECTION_SPACING or "Spacing and Border");
+
 	panel.ButtonPaddingRow = ChatBar_CreateOptionsValueRow(panel.AppearancePage, panel:GetName() .. "ButtonPaddingRow", CHATBAR_MENU_MAIN_BUTTONPADDING);
-	panel.ButtonPaddingRow:SetPoint("TOPLEFT", panel.ButtonWidthRow, "BOTTOMLEFT", 0, -4);
 	panel.ButtonPaddingRow.Minus.actionFunc = ChatBar_DecreaseButtonPadding;
 	panel.ButtonPaddingRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 	panel.ButtonPaddingRow.Plus.actionFunc = ChatBar_IncreaseButtonPadding;
@@ -729,73 +806,73 @@ function ChatBar_CreateOptionsPanel()
 
 	panel.ColorBarBorderRow = ChatBar_CreateOptionsValueRow(panel.AppearancePage, panel:GetName() .. "ColorBarBorderRow",
 		CHATBAR_MENU_MAIN_COLORBARBORDER or "Color Bar Border");
-	panel.ColorBarBorderRow:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", 0, -4);
 	panel.ColorBarBorderRow.Minus.actionFunc = ChatBar_DecreaseColorBarBorderSize;
 	panel.ColorBarBorderRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 	panel.ColorBarBorderRow.Plus.actionFunc = ChatBar_IncreaseColorBarBorderSize;
 	panel.ColorBarBorderRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
 	panel.BarBorder = ChatBar_CreateOptionsCheckButton(panel.AppearancePage, panel:GetName() .. "BarBorder", CHATBAR_MENU_MAIN_BARBORDER);
-	panel.BarBorder:SetPoint("TOPLEFT", panel.ButtonPaddingRow, "BOTTOMLEFT", -4, -2);
 	panel.BarBorder.optionFunc = ChatBar_Toggle_BarBorder;
 	panel.BarBorder:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
+	panel.ShowButtonText = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "ShowButtonText", CHATBAR_MENU_MAIN_SHOWTEXT);
+	panel.ShowButtonText.optionFunc = ChatBar_Toggle_ButtonText;
+	panel.ShowButtonText:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
+
 	panel.ButtonTextSizeRow = ChatBar_CreateOptionsValueRow(panel.TextPage, panel:GetName() .. "ButtonTextSizeRow", CHATBAR_MENU_MAIN_TEXTSIZE);
-	panel.ButtonTextSizeRow:SetPoint("TOPLEFT", panel.TextPage, "TOPLEFT", 0, -4);
 	panel.ButtonTextSizeRow.Minus.actionFunc = ChatBar_DecreaseButtonTextSize;
 	panel.ButtonTextSizeRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 	panel.ButtonTextSizeRow.Plus.actionFunc = ChatBar_IncreaseButtonTextSize;
 	panel.ButtonTextSizeRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
-	panel.ShowButtonText = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "ShowButtonText", CHATBAR_MENU_MAIN_SHOWTEXT);
-	panel.ShowButtonText:SetPoint("TOPLEFT", panel.ButtonTextSizeRow, "BOTTOMLEFT", -4, -2);
-	panel.ShowButtonText.optionFunc = ChatBar_Toggle_ButtonText;
-	panel.ShowButtonText:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
+	panel.ChannelNumbers = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "ChannelNumbers", CHATBAR_MENU_MAIN_CHANNELID);
+	panel.ChannelNumbers.optionFunc = ChatBar_Toggle_TextChannelNumbers;
+	panel.ChannelNumbers:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
 	panel.TextOnButtons = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "TextOnButtons", CHATBAR_MENU_MAIN_TEXTONBUTTONS);
-	panel.TextOnButtons:SetPoint("TOPLEFT", panel.ShowButtonText, "BOTTOMLEFT", 0, -2);
 	panel.TextOnButtons.optionFunc = ChatBar_Toggle_TextOrientation;
 	panel.TextOnButtons:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
 	panel.ReverseTextPosition = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "ReverseTextPosition", CHATBAR_MENU_MAIN_REVERSETEXT);
-	panel.ReverseTextPosition:SetPoint("TOPLEFT", panel.TextOnButtons, "BOTTOMLEFT", 0, -2);
 	panel.ReverseTextPosition.optionFunc = ChatBar_Toggle_ReverseTextPosition;
 	panel.ReverseTextPosition:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
+	panel.TextGapRow = ChatBar_CreateOptionsValueRow(panel.TextPage, panel:GetName() .. "TextGapRow",
+		CHATBAR_MENU_MAIN_TEXTGAP or "Text Spacing");
+	panel.TextGapRow.Minus.actionFunc = ChatBar_DecreaseTextGap;
+	panel.TextGapRow.Minus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+	panel.TextGapRow.Plus.actionFunc = ChatBar_IncreaseTextGap;
+	panel.TextGapRow.Plus:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+
 	panel.HoverText = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "HoverText", CHATBAR_MENU_MAIN_HOVERTEXT);
-	panel.HoverText:SetPoint("TOPLEFT", panel.ReverseTextPosition, "BOTTOMLEFT", 0, -2);
 	panel.HoverText.optionFunc = ChatBar_Toggle_HoverText;
 	panel.HoverText:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
-	panel.ChannelNumbers = ChatBar_CreateOptionsCheckButton(panel.TextPage, panel:GetName() .. "ChannelNumbers", CHATBAR_MENU_MAIN_CHANNELID);
-	panel.ChannelNumbers:SetPoint("TOPLEFT", panel.HoverText, "BOTTOMLEFT", 0, -2);
-	panel.ChannelNumbers.optionFunc = ChatBar_Toggle_TextChannelNumbers;
-	panel.ChannelNumbers:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
+	panel.LayoutHeader = ChatBar_CreateOptionsSectionHeader(panel.BehaviorPage, panel:GetName() .. "LayoutHeader",
+		CHATBAR_OPTIONS_SECTION_LAYOUT or "Layout");
 
 	panel.VerticalButtons = ChatBar_CreateOptionsCheckButton(panel.BehaviorPage, panel:GetName() .. "VerticalButtons", CHATBAR_MENU_MAIN_VERTICAL);
-	panel.VerticalButtons:SetPoint("TOPLEFT", panel.BehaviorPage, "TOPLEFT", 0, -4);
 	panel.VerticalButtons.optionFunc = ChatBar_Toggle_VerticalButtonOrientationSlide;
 	panel.VerticalButtons:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
 	panel.ReverseButtons = ChatBar_CreateOptionsCheckButton(panel.BehaviorPage, panel:GetName() .. "ReverseButtons", CHATBAR_MENU_MAIN_REVERSE);
-	panel.ReverseButtons:SetPoint("TOPLEFT", panel.VerticalButtons, "BOTTOMLEFT", 0, -2);
 	panel.ReverseButtons.optionFunc = ChatBar_Toggle_AlternateButtonOrientationSlide;
 	panel.ReverseButtons:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
+	panel.ResetButton = ChatBar_CreateOptionsActionButton(panel.BehaviorPage, panel:GetName() .. "ResetButton", 130, CHATBAR_MENU_MAIN_RESET);
+	panel.ResetButton.actionFunc = ChatBar_Reset;
+	panel.ResetButton:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
+
+	panel.FeedbackHeader = ChatBar_CreateOptionsSectionHeader(panel.BehaviorPage, panel:GetName() .. "FeedbackHeader",
+		CHATBAR_OPTIONS_SECTION_FEEDBACK or "Feedback");
+
 	panel.ButtonFlashing = ChatBar_CreateOptionsCheckButton(panel.BehaviorPage, panel:GetName() .. "ButtonFlashing", CHATBAR_MENU_MAIN_BUTTONFLASHING);
-	panel.ButtonFlashing:SetPoint("TOPLEFT", panel.ReverseButtons, "BOTTOMLEFT", 0, -2);
 	panel.ButtonFlashing.optionFunc = ChatBar_Toggle_ButtonFlashing;
 	panel.ButtonFlashing:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
 
 	panel.FadeEffect = ChatBar_CreateOptionsCheckButton(panel.BehaviorPage, panel:GetName() .. "FadeEffect", CHATBAR_MENU_MAIN_FADE);
-	panel.FadeEffect:SetPoint("TOPLEFT", panel.ButtonFlashing, "BOTTOMLEFT", 0, -2);
 	panel.FadeEffect.optionFunc = ChatBar_Toggle_FadeEffect;
 	panel.FadeEffect:SetScript("OnClick", ChatBar_OptionsCheckButton_OnClick);
-
-	panel.ResetButton = ChatBar_CreateOptionsActionButton(panel.BehaviorPage, panel:GetName() .. "ResetButton", 130, CHATBAR_MENU_MAIN_RESET);
-	panel.ResetButton:SetPoint("TOPLEFT", panel.FadeEffect, "BOTTOMLEFT", 16, -16);
-	panel.ResetButton.actionFunc = ChatBar_Reset;
-	panel.ResetButton:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
 	panel.ChannelHelpText = panel.ChannelsPage:CreateFontString(panel:GetName() .. "ChannelHelpText", "OVERLAY", "GameFontNormalSmall");
 	panel.ChannelHelpText:SetWidth(240);
@@ -814,27 +891,11 @@ function ChatBar_CreateOptionsPanel()
 	panel.ChannelClearAllButton.actionFunc = ChatBar_ClearAllChannels;
 	panel.ChannelClearAllButton:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
 
-	panel.ChannelSortLabel = panel.ChannelsPage:CreateFontString(panel:GetName() .. "ChannelSortLabel", "OVERLAY",
-		"GameFontNormalSmall");
-	panel.ChannelSortLabel:SetPoint("TOPLEFT", panel.ChannelSelectAllButton, "BOTTOMLEFT", 12, -6);
-
-	panel.ChannelSortDropDown = CreateFrame("Frame", panel:GetName() .. "ChannelSortDropDown", panel.ChannelsPage,
-		"UIDropDownMenuTemplate");
-	panel.ChannelSortDropDown:SetPoint("TOPLEFT", panel.ChannelSortLabel, "BOTTOMLEFT", -16, -2);
-	UIDropDownMenu_SetWidth(180, panel.ChannelSortDropDown);
-	UIDropDownMenu_Initialize(panel.ChannelSortDropDown, ChatBar_InitializeChannelSortDropDown);
-
-	panel.ChannelResetSortButton = ChatBar_CreateOptionsActionButton(panel.ChannelsPage,
-		panel:GetName() .. "ChannelResetSortButton", 116, CHATBAR_OPTIONS_CHANNELS_RESETSORT or "Reset Sort");
-	panel.ChannelResetSortButton:SetPoint("TOPLEFT", panel.ChannelSortDropDown, "BOTTOMLEFT", 16, -8);
-	panel.ChannelResetSortButton.actionFunc = ChatBar_ResetButtonOrder;
-	panel.ChannelResetSortButton:SetScript("OnClick", ChatBar_OptionsActionButton_OnClick);
-
 	panel.ChannelScrollFrame = CreateFrame("ScrollFrame", panel:GetName() .. "ChannelScrollFrame", panel.ChannelsPage,
 		"UIPanelScrollFrameTemplate");
-	panel.ChannelScrollFrame:SetPoint("TOPLEFT", panel.ChannelResetSortButton, "BOTTOMLEFT", 0, -8);
+	panel.ChannelScrollFrame:SetPoint("TOPLEFT", panel.ChannelSelectAllButton, "BOTTOMLEFT", 0, -8);
 	panel.ChannelScrollFrame:SetWidth(244);
-	panel.ChannelScrollFrame:SetHeight(230);
+	panel.ChannelScrollFrame:SetHeight(310);
 
 	panel.ChannelScrollChild = CreateFrame("Frame", panel:GetName() .. "ChannelScrollChild", panel.ChannelScrollFrame);
 	panel.ChannelScrollChild:SetWidth(214);
@@ -864,4 +925,5 @@ function ChatBar_CreateOptionsPanel()
 	end
 
 	panel.currentTab = "appearance";
+	ChatBar_UpdateOptionsPanel();
 end
