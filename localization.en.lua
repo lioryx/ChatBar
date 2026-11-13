@@ -13,7 +13,6 @@ CHATBAR_OFFICER_ABRV             = "O";
 CHATBAR_WHISPER_ABRV             = "W";
 CHATBAR_EMOTE_ABRV               = "E";
 CHATBAR_ROLL_ABRV                = "D";
-CHATBAR_HARDCORE_ABRV            = "H";
 
 CHATBAR_MENU_MAIN_TITLE          = "ChatBar Options";
 CHATBAR_MENU_MAIN_LARGE          = "Large Buttons";
@@ -79,7 +78,6 @@ CHATBAR_LOCALDEFENSE             = "LocalDefense";
 CHATBAR_WORLDDEFENSE             = "WorldDefense";
 CHATBAR_GUILDRECRUITMENT         = "GuildRecruitment";
 CHATBAR_ROLL                     = "Roll 1-100";
-CHATBAR_HARDCORE                 = "Hardcore";
 
 CHATBAR_SKIN1                    = "Solid";
 CHATBAR_SKIN2                    = "Squares";
@@ -87,37 +85,7 @@ CHATBAR_SKIN3                    = "Text Only";
 CHATBAR_SKIN4                    = "Octagon";
 CHATBAR_SKIN5                    = "Color Bars";
 
--- Extra buttons (plugin shortcuts / tools)
-CHATBAR_MEETING_ABRV             = "M";
-CHATBAR_MEETING                  = "Meeting Stone";
-CHATBAR_RAIDPROGRESS_ABRV        = "CD";
-CHATBAR_RAIDPROGRESS             = "Raid Progress / CD";
-CHATBAR_XYTRACKER_ABRV           = "XY";
-CHATBAR_XYTRACKER                = "XyTracker";
-CHATBAR_ATLASLOOT_ABRV           = "AL";
-CHATBAR_ATLASLOOT                = "Loot Browser";
-CHATBAR_SUPERMACRO_ABRV          = "SM";
-CHATBAR_SUPERMACRO               = "SuperMacro";
-CHATBAR_ACTIONBARPROFILES_ABRV   = "AP";
-CHATBAR_ACTIONBARPROFILES        = "Action Bar Profiles";
-CHATBAR_OUTFITTER_ABRV           = "EQ";
-CHATBAR_OUTFITTER                = "Outfitter";
-CHATBAR_TRINKETMENU_ABRV         = "TK";
-CHATBAR_TRINKETMENU              = "TrinketMenu";
-CHATBAR_RAIDCHECK_ABRV           = "RC";
-CHATBAR_RAIDCHECK                = "RaidCheck";
-CHATBAR_SPIRITSENSEREC_ABRV      = "SS";
-CHATBAR_SPIRITSENSEREC           = "SpiritSenseRec";
-CHATBAR_BETTERCHARACTERSTATS_ABRV = "ST";
-CHATBAR_BETTERCHARACTERSTATS     = "Properties Panel";
-CHATBAR_AUTOMARKER_ABRV          = "AM";
-CHATBAR_AUTOMARKER               = "AutoMarker";
-CHATBAR_AUTOMATONEX_ABRV         = "AX";
-CHATBAR_AUTOMATONEX              = "Automatonex";
-CHATBAR_TRACKING_ABRV            = "TR";
-CHATBAR_TRACKING                 = "Tracking";
-CHATBAR_SILVERDRAGONRADAR_ABRV   = "SR";
-CHATBAR_SILVERDRAGONRADAR        = "Rare Elite Radar";
+-- Built-in tool buttons
 CHATBAR_READYCHECK_ABRV          = "RD";
 CHATBAR_READYCHECK               = "Ready Check";
 CHATBAR_COUNTDOWN_ABRV           = "CT";

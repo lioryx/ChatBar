@@ -2,10 +2,6 @@
 -- DropDown Menu
 --------------------------------------------------
 
-function ChatBar_DropDownOnLoad()
-	ChatBar_InitializeDropDown(this);
-end
-
 function ChatBar_LoadDropDownMenu()
 	if (not UIDROPDOWNMENU_MENU_VALUE) then
 		return;
@@ -139,7 +135,7 @@ function ChatBar_CreateFrameMenu()
 end
 
 function ChatBar_CreateHiddenButtonsMenu()
-	for k, v in ChatBar_HiddenButtons do
+	for k, v in pairs(ChatBar_HiddenButtons) do
 		local info = {};
 		local ctype = k;
 		info.text = format(CHATBAR_MENU_SHOW_BUTTON, k);
@@ -156,7 +152,7 @@ function ChatBar_CreateAltArtMenu()
 	for k, v in pairs(ChatBar_AltArtDirs) do
 		local info = {};
 		local skinIndex = k;
-		info.text = getglobal("CHATBAR_SKIN" .. k);
+		info.text = _G["CHATBAR_SKIN" .. k];
 		info.func = function()
 			ChatBar_AltArt = skinIndex;
 			ChatBar_UpdateArt();
@@ -179,18 +175,29 @@ function ChatBar_CreateButtonMenu()
 	info.isTitle = 1;
 	UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 
-	chatType, channelIndex = string.gfind(buttonHeader, "([^%d]*)([%d]+)$")();
+	chatType, channelIndex = string.match(buttonHeader, "([^%d]*)([%d]+)$");
 	if (channelIndex) then
 		local channelNum, channelName = GetChannelName(tonumber(channelIndex));
+		if (not channelName) then
+			channelName = "";
+		end
 
 		info = {};
 		info.text = CHATBAR_MENU_CHANNEL_LEAVE;
-		info.func = function() LeaveChannelByName(channelNum); end;
+		info.func = function()
+			if (LeaveChannelByName) then
+				LeaveChannelByName(channelNum);
+			end
+		end;
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 
 		info = {};
 		info.text = CHATBAR_MENU_CHANNEL_LIST;
-		info.func = function() ListChannelByName(channelNum); end;
+		info.func = function()
+			if (ListChannelByName) then
+				ListChannelByName(channelNum);
+			end
+		end;
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);
 
 		local channelShortName = ChatBar_GetFirstWord(channelName);
@@ -223,7 +230,11 @@ function ChatBar_CreateButtonMenu()
 		info.func = function()
 			ChatFrame_ReplyTell(chatFrame);
 		end;
-		if (ChatEdit_GetLastTellTarget(ChatFrameEditBox) == "") then
+		local lastTell = "";
+		if (ChatEdit_GetLastTellTarget) then
+			lastTell = ChatEdit_GetLastTellTarget() or "";
+		end
+		if (lastTell == "") then
 			info.disabled = 1;
 		end
 		UIDropDownMenu_AddButton(info, UIDROPDOWNMENU_MENU_LEVEL);

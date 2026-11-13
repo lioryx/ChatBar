@@ -2,11 +2,21 @@
 -- Options Panel
 --------------------------------------------------
 
+local function ChatBar_GetCheckButtonText(button)
+	if (not button) then
+		return nil;
+	end
+	return button.Text or button.text or _G[button:GetName() .. "Text"];
+end
+
 local function ChatBar_CreateOptionsCheckButton(parent, name, labelText)
 	local button = CreateFrame("CheckButton", name, parent, "UICheckButtonTemplate");
 	button:SetWidth(24);
 	button:SetHeight(24);
-	getglobal(name .. "Text"):SetText(labelText);
+	local textRegion = ChatBar_GetCheckButtonText(button);
+	if (textRegion) then
+		textRegion:SetText(labelText);
+	end
 	return button;
 end
 
@@ -64,7 +74,7 @@ local function ChatBar_LayoutOptionStack(parent, entries, startX, startY, defaul
 	local x;
 	local gap;
 
-	for i = 1, table.getn(entries) do
+	for i = 1, #(entries) do
 		entry = entries[i];
 		frame = entry.frame;
 		if (frame) and (frame:IsShown()) then
@@ -136,29 +146,29 @@ local function ChatBar_UpdateValueRowButtons(row, value, minValue, maxValue, ena
 	end
 end
 
-function ChatBar_OptionsCheckButton_OnClick()
-	if (this.optionFunc) then
-		this.optionFunc();
+function ChatBar_OptionsCheckButton_OnClick(self)
+	if (self.optionFunc) then
+		self.optionFunc();
 	end
 	ChatBar_UpdateOptionsPanel();
 end
 
-function ChatBar_OptionsActionButton_OnClick()
-	if (this.actionFunc) then
-		this.actionFunc();
+function ChatBar_OptionsActionButton_OnClick(self)
+	if (self.actionFunc) then
+		self.actionFunc();
 	end
 	ChatBar_UpdateOptionsPanel();
 end
 
-function ChatBar_OptionsTab_OnClick()
-	if (this.tabKey) then
-		ChatBarOptionsPanel.currentTab = this.tabKey;
+function ChatBar_OptionsTab_OnClick(self)
+	if (self.tabKey) then
+		ChatBarOptionsPanel.currentTab = self.tabKey;
 		ChatBar_UpdateOptionsPanel();
 	end
 end
 
-local function ChatBar_AltArtDropDown_OnClick()
-	ChatBar_AltArt = this.value;
+local function ChatBar_AltArtDropDown_OnClick(self)
+	ChatBar_AltArt = self.value;
 	ChatBar_UpdateArt();
 	ChatBar_UpdateOptionsPanel();
 end
@@ -167,9 +177,9 @@ local function ChatBar_InitializeAltArtDropDown()
 	local info;
 	local i;
 
-	for i = 1, table.getn(ChatBar_AltArtDirs) do
+	for i = 1, #(ChatBar_AltArtDirs) do
 		info = {};
-		info.text = getglobal("CHATBAR_SKIN" .. i) or ChatBar_AltArtDirs[i];
+		info.text = _G["CHATBAR_SKIN" .. i] or ChatBar_AltArtDirs[i];
 		info.value = i;
 		info.func = ChatBar_AltArtDropDown_OnClick;
 		UIDropDownMenu_AddButton(info);
@@ -186,7 +196,7 @@ local function ChatBar_GetVisibilityEntries()
 	local displayOrder = ChatBar_GetDisplayOrder();
 	local i;
 
-	for i = 1, table.getn(displayOrder) do
+	for i = 1, #(displayOrder) do
 		chatTypeInfo = ChatBar_ChatTypes[displayOrder[i]];
 		_, _, channelIndex = string.find(chatTypeInfo.type, "^CHANNEL(%d+)$");
 		label = nil;
@@ -214,15 +224,15 @@ local function ChatBar_GetVisibilityEntries()
 	return entries;
 end
 
-function ChatBar_ChannelVisibilityCheck_OnClick()
-	if (not this.visibilityKey) then
+function ChatBar_ChannelVisibilityCheck_OnClick(self)
+	if (not self.visibilityKey) then
 		return;
 	end
 
-	if (this:GetChecked()) then
-		ChatBar_HiddenButtons[this.visibilityKey] = nil;
+	if (self:GetChecked()) then
+		ChatBar_HiddenButtons[self.visibilityKey] = nil;
 	else
-		ChatBar_HiddenButtons[this.visibilityKey] = true;
+		ChatBar_HiddenButtons[self.visibilityKey] = true;
 	end
 
 	ChatBar_UpdateButtons();
@@ -233,7 +243,7 @@ local function ChatBar_SetAllChannelVisibility(showButtons)
 	local entries = ChatBar_GetVisibilityEntries();
 	local i;
 
-	for i = 1, table.getn(entries) do
+	for i = 1, #(entries) do
 		if (showButtons) then
 			ChatBar_HiddenButtons[entries[i].key] = nil;
 		else
@@ -255,7 +265,7 @@ end
 
 local function ChatBar_UpdateChannelsPage(panel)
 	local entries = ChatBar_GetVisibilityEntries();
-	local entryCount = table.getn(entries);
+	local entryCount = #(entries);
 	local contentHeight = 8;
 	local maxScroll;
 	local currentScroll;
@@ -264,11 +274,13 @@ local function ChatBar_UpdateChannelsPage(panel)
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
 		local checkButton = panel.ChannelEntries[i];
 		local entry = entries[i];
-		local textRegion = getglobal(checkButton:GetName() .. "Text");
+		local textRegion = ChatBar_GetCheckButtonText(checkButton);
 
 		if (entry) then
 			checkButton.visibilityKey = entry.key;
-			textRegion:SetText(entry.label);
+			if (textRegion) then
+				textRegion:SetText(entry.label);
+			end
 			checkButton:SetChecked(not ChatBar_HiddenButtons[entry.key]);
 			checkButton:Show();
 			contentHeight = 8 + (i * 26);
@@ -631,10 +643,10 @@ function ChatBar_UpdateOptionsPanel()
 	panel.BarBorder:SetChecked(ChatBar_BarBorder);
 	panel.FadeEffect:SetChecked(ChatBar_FadeEnabled);
 	if (type(ChatBar_AltArt) ~= "number") or (not ChatBar_AltArtDirs[ChatBar_AltArt]) then
-		ChatBar_AltArt = 1;
+		ChatBar_AltArt = CHAT_BAR_DEFAULT_ART;
 	end
 	UIDropDownMenu_SetSelectedID(panel.AltArtDropDown, ChatBar_AltArt);
-	UIDropDownMenu_SetText(getglobal("CHATBAR_SKIN" .. ChatBar_AltArt) or ChatBar_AltArtDirs[ChatBar_AltArt], panel.AltArtDropDown);
+	UIDropDownMenu_SetText(panel.AltArtDropDown, _G["CHATBAR_SKIN" .. ChatBar_AltArt] or ChatBar_AltArtDirs[ChatBar_AltArt]);
 
 	panel.ResetButton:SetText(CHATBAR_MENU_MAIN_RESET);
 	panel.AppearanceTab:SetText(CHATBAR_OPTIONS_TAB_APPEARANCE or "Skin");
@@ -649,8 +661,10 @@ function ChatBar_UpdateOptionsPanel()
 	ChatBar_UpdateChannelsPage(panel);
 
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
-		local textRegion = getglobal(panel.ChannelEntries[i]:GetName() .. "Text");
-		textRegion:SetWidth(188);
+		local textRegion = ChatBar_GetCheckButtonText(panel.ChannelEntries[i]);
+		if (textRegion) then
+			textRegion:SetWidth(188);
+		end
 	end
 end
 
@@ -687,7 +701,7 @@ function ChatBar_CreateOptionsPanel()
 		return;
 	end
 
-	local panel = CreateFrame("Frame", "ChatBarOptionsPanel", UIParent);
+	local panel = CreateFrame("Frame", "ChatBarOptionsPanel", UIParent, "BackdropTemplate");
 	panel:SetWidth(320);
 	panel:SetHeight(540);
 	panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
@@ -706,11 +720,11 @@ function ChatBar_CreateOptionsPanel()
 	});
 	panel:SetBackdropColor(0, 0, 0, 1);
 	panel:SetBackdropBorderColor(1, .82, 0, 1);
-	panel:SetScript("OnDragStart", function()
-		this:StartMoving();
+	panel:SetScript("OnDragStart", function(self)
+		self:StartMoving();
 	end);
-	panel:SetScript("OnDragStop", function()
-		this:StopMovingOrSizing();
+	panel:SetScript("OnDragStop", function(self)
+		self:StopMovingOrSizing();
 	end);
 	panel:Hide();
 
@@ -777,7 +791,7 @@ function ChatBar_CreateOptionsPanel()
 
 	panel.AltArtDropDown = CreateFrame("Frame", panel:GetName() .. "AltArtDropDown", panel.AltArtDropDownHolder, "UIDropDownMenuTemplate");
 	panel.AltArtDropDown:SetPoint("TOPLEFT", panel.AltArtDropDownHolder, "TOPLEFT", -16, 0);
-	UIDropDownMenu_SetWidth(180, panel.AltArtDropDown);
+	UIDropDownMenu_SetWidth(panel.AltArtDropDown, 180);
 	UIDropDownMenu_Initialize(panel.AltArtDropDown, ChatBar_InitializeAltArtDropDown);
 
 	panel.SizeHeader = ChatBar_CreateOptionsSectionHeader(panel.AppearancePage, panel:GetName() .. "SizeHeader",
@@ -911,14 +925,16 @@ function ChatBar_CreateOptionsPanel()
 	panel.ChannelEntries = {};
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
 		local channelCheck = ChatBar_CreateOptionsCheckButton(panel.ChannelScrollChild, panel:GetName() .. "ChannelEntry" .. i, "");
-		local channelText = getglobal(channelCheck:GetName() .. "Text");
+		local channelText = ChatBar_GetCheckButtonText(channelCheck);
 		if (i == 1) then
 			channelCheck:SetPoint("TOPLEFT", panel.ChannelScrollChild, "TOPLEFT", 0, -4);
 		else
 			channelCheck:SetPoint("TOPLEFT", panel.ChannelEntries[i - 1], "BOTTOMLEFT", 0, -2);
 		end
-		channelText:SetWidth(188);
-		channelText:SetJustifyH("LEFT");
+		if (channelText) then
+			channelText:SetWidth(188);
+			channelText:SetJustifyH("LEFT");
+		end
 		channelCheck:SetScript("OnClick", ChatBar_ChannelVisibilityCheck_OnClick);
 		channelCheck:Hide();
 		panel.ChannelEntries[i] = channelCheck;

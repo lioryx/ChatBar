@@ -1,7 +1,7 @@
 # ChatBar
 ChatBar - Button Bar for openning chat messages of each type.
 
-Current addon version: 3.2
+Current addon version: 4.0
 
 ## Original creator
 - [KarlKFI](https://wow.curseforge.com/addons/project-1579/)
@@ -11,6 +11,13 @@ Current addon version: 3.2
 - [Lichery](https://github.com/Lichery)
 
 ## Changelog
+* v4.0
+  - Ported to WoW Forever (Interface 16001, Lua 5.1)
+  - Removed third-party addon shortcut buttons and the tracking button
+  - Removed TurtleWoW hardcore chat and custom battleground zone names
+  - Battleground chat now uses the native instance chat channel
+  - Kept ready check, countdown, and the emote menu
+
 * v3.2
   - Added localized addon titles and notes for Simplified Chinese, Traditional Chinese, German, and Russian
   - Corrected English and French addon notes in the addon list
@@ -70,7 +77,7 @@ Current addon version: 3.2
 * Based on `ChatBar 1.6`
 
 ## How to Install
-Put `ChatBar` folder to `World of Warcraft\Interface\AddOns` 	
+Put the `ChatBar` folder in `World of Warcraft\_forever_\Interface\AddOns`. 	
 
 ## Detailed description
 A little acsii art for demonstration: [oooooooo]

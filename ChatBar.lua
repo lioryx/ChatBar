@@ -37,7 +37,7 @@ CHAT_BAR_BUTTON_TEXT_SIZE_STEP = 1;
 CHAT_BAR_BUTTON_PADDING_MIN = 0;
 CHAT_BAR_BUTTON_PADDING_MAX = 10;
 CHAT_BAR_BUTTON_PADDING_STEP = 1;
-CHAT_BAR_TEXT_GAP = 0;
+CHAT_BAR_TEXT_GAP = 1;
 CHAT_BAR_TEXT_GAP_MIN = 0;
 CHAT_BAR_TEXT_GAP_MAX = 12;
 CHAT_BAR_TEXT_GAP_STEP = 1;
@@ -45,7 +45,7 @@ CHAT_BAR_COLORBAR_BORDER = 2;   -- default border size for ColorBars skin
 CHAT_BAR_COLORBAR_BORDER_MIN = 0;
 CHAT_BAR_COLORBAR_BORDER_MAX = 10;
 CHAT_BAR_COLORBAR_BORDER_STEP = 1;
-CHAT_BAR_COLORBAR_WIDTH = 38;   -- default width when entering ColorBars skin
+CHAT_BAR_COLORBAR_WIDTH = 42;   -- default width when entering ColorBars skin
 CHAT_BAR_COLORBAR_HEIGHT = 8;   -- default height when entering ColorBars skin
 ChatBar_VerticalDisplay = false;
 ChatBar_AlternateOrientation = false;
@@ -61,6 +61,8 @@ ChatBar_LastTell = nil;
 ChatBar_StoredStickies = {};
 ChatBar_HiddenButtons = {};
 ChatBar_AltArtDirs = { "SkinSolid", "SkinSquares", "TextOnly", "SkinOctagon", "ColorBars" };
+CHAT_BAR_DEFAULT_ART = 5; -- ColorBars
+ChatBar_AltArt = CHAT_BAR_DEFAULT_ART;
 ChatBar_ButtonScale = 1;
 ChatBar_ButtonSize = CHAT_BAR_BUTTON_SIZE;
 ChatBar_ButtonWidth = CHAT_BAR_BUTTON_WIDTH;
@@ -70,7 +72,6 @@ ChatBar_ButtonPadding = CHAT_BAR_BUTTON_PADDING;
 ChatBar_TextGap = CHAT_BAR_TEXT_GAP;
 ChatBar_ColorBarBorderSize = CHAT_BAR_COLORBAR_BORDER;
 ChatBar_CountdownLen = 6;
-ChatBar_TrackingMode = "modern";
 ChatBar_ChannelSort = "number";
 ChatBar_ButtonOrder = nil;
 ChatBar_DragSourceButton = nil;
@@ -92,7 +93,7 @@ ChatBar_HoverTimer = 0;
 ChatBar_IsFading = false;
 ChatBar_ManualShow = false;
 ChatBar_ManualShowUntil = 0;
-ChatBar_HoverTextEnabled = true;
+ChatBar_HoverTextEnabled = false;
 ChatBar_TextFadeAlpha = 0.0;
 ChatBar_TextFadeStartAlpha = 0.0;
 ChatBar_TextFadeTarget = 0.0;
@@ -112,43 +113,47 @@ function ChatBar_IsColorBarArt()
 	return ChatBar_AltArtDirs[ChatBar_AltArt] == "ColorBars";
 end
 
-local ChatBar_ExtraBattlegroundZones = {
-	["阳光林地"] = true,
-	["血环竞技场"] = true,
-	["荆棘峡谷"] = true,
-	["Sunnyglade"] = true,
-	["Sunny Glade"] = true,
-	["Blood Ring Arena"] = true,
-	["Bloodring Arena"] = true,
-	["Thorn Gorge"] = true,
-	["Thorn Canyon"] = true,
-};
-
 function ChatBar_IsInBattleground()
-	local zoneName = GetZoneText();
-	if (not zoneName) or (zoneName == "") then
+	local inInstance, instanceType = IsInInstance();
+	return inInstance and (instanceType == "pvp");
+end
+
+local function ChatBar_TryGuildCall(func)
+	if (type(func) ~= "function") then
 		return false;
 	end
-	if (zoneName == CHATBAR_WSG) or (zoneName == CHATBAR_AB) or (zoneName == CHATBAR_AV) then
-		return true;
+	local ok, result = pcall(func);
+	if (not ok) then
+		return false;
 	end
-	if (ChatBar_ExtraBattlegroundZones[zoneName]) then
-		return true;
-	end
-	return false;
+	return result;
 end
 
 function ChatBar_CanUseOfficerChat()
 	if (not IsInGuild()) then
 		return false;
 	end
-	if (IsGuildLeader()) then
+	if (C_GuildInfo) then
+		if (ChatBar_TryGuildCall(C_GuildInfo.IsGuildLeader)) then
+			return true;
+		end
+		if (ChatBar_TryGuildCall(C_GuildInfo.CanEditOfficerNote)) then
+			return true;
+		end
+		if (ChatBar_TryGuildCall(C_GuildInfo.CanViewOfficerNote)) then
+			return true;
+		end
+	end
+	if (ChatBar_TryGuildCall(IsGuildLeader)) then
 		return true;
 	end
-	if (CanViewOfficerNote) and (CanViewOfficerNote()) then
+	if (ChatBar_TryGuildCall(CanViewOfficerNote)) then
 		return true;
 	end
-	return CanEditOfficerNote();
+	if (ChatBar_TryGuildCall(CanEditOfficerNote)) then
+		return true;
+	end
+	return false;
 end
 
 function ChatBar_GetButtonSpacing()
@@ -201,20 +206,15 @@ function ChatBar_InitializePluginDefaults()
 	end
 	ChatBar_PluginDefaultsInitialized = true;
 
-	-- 首次初始化时若 pfUI 已加载，隐藏自带追踪按钮以免和小地图冲突
-	if (pfUI and pfUI.env) then
-		ChatBar_TrackingMode = "hide";
-	end
-
 	if (not ChatBar_ChatTypes) then
 		return;
 	end
 
-	-- 默认隐藏所有插件频道按钮（CB_ 开头的扩展条目）
+	-- 默认隐藏扩展工具按钮（就位确认、倒计时、表情菜单）和悄悄话
 	local i = 1;
 	while (ChatBar_ChatTypes[i]) do
 		local entry = ChatBar_ChatTypes[i];
-		if (string.sub(entry.type, 1, 3) == "CB_") then
+		if (string.sub(entry.type, 1, 3) == "CB_") or (entry.type == "WHISPER") then
 			ChatBar_HiddenButtons[entry.text()] = true;
 		end
 		i = i + 1;
@@ -259,9 +259,6 @@ function ChatBar_InitializeSizeSettings()
 
 	if (type(ChatBar_CountdownLen) ~= "number") then
 		ChatBar_CountdownLen = 6;
-	end
-	if (type(ChatBar_TrackingMode) ~= "string") then
-		ChatBar_TrackingMode = "modern";
 	end
 	if (ChatBar_ChannelSort ~= "name") and (ChatBar_ChannelSort ~= "name_desc") then
 		ChatBar_ChannelSort = "number";
@@ -383,8 +380,57 @@ function ChatBar_IsPinnedEntry(entryIndex)
 end
 
 function ChatBar_GetFirstWord(s)
-	local firstWord, count = gsub(s, "%s.*", "");
+	local firstWord = string.gsub(s, "%s.*", "");
 	return firstWord;
+end
+
+-- 聊天输入框是受保护框体，战斗中不能改 chatType
+function ChatBar_GetEditBox(chatFrame)
+	if (ChatEdit_ChooseBoxForSend) then
+		return ChatEdit_ChooseBoxForSend(chatFrame);
+	end
+	if (chatFrame) and (chatFrame.editBox) then
+		return chatFrame.editBox;
+	end
+	if (DEFAULT_CHAT_FRAME) then
+		return DEFAULT_CHAT_FRAME.editBox;
+	end
+	return nil;
+end
+
+function ChatBar_ReadChatType(editBox)
+	if (not editBox) then
+		return nil;
+	end
+	if (editBox.GetAttribute) then
+		return editBox:GetAttribute("chatType"), editBox:GetAttribute("channelTarget"), editBox:GetAttribute("tellTarget");
+	end
+	return editBox.chatType, editBox.channelTarget, editBox.tellTarget;
+end
+
+function ChatBar_ActivateChatType(editBox, chatType, channelTarget, silent)
+	if (not editBox) then
+		return false;
+	end
+	if (InCombatLockdown) and (InCombatLockdown()) then
+		if (not silent) then
+			DEFAULT_CHAT_FRAME:AddMessage("|cFFFF0000ChatBar: 战斗中无法切换聊天频道|r");
+		end
+		return false;
+	end
+	editBox:SetAttribute("chatType", chatType);
+	if (channelTarget) then
+		editBox:SetAttribute("channelTarget", channelTarget);
+	end
+	if (ChatEdit_ActivateChat) then
+		ChatEdit_ActivateChat(editBox);
+	else
+		editBox:Show();
+	end
+	if (ChatEdit_UpdateHeader) then
+		ChatEdit_UpdateHeader(editBox);
+	end
+	return true;
 end
 
 function ChatBar_Print(text)
@@ -514,7 +560,7 @@ function ChatBar_GetButtonIndexAtCursor()
 
 	local i;
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
-		local button = getglobal("ChatBarFrameButton" .. i);
+		local button = _G["ChatBarFrameButton" .. i];
 		if (button and button:IsVisible() and button.ChatID) then
 			local left = button:GetLeft();
 			local right = button:GetRight();
@@ -534,25 +580,25 @@ function ChatBar_GetChatFrameFullArea()
 	local frames = {};
 	local i;
 	for i = 1, 10 do
-		local chatFrame = getglobal("ChatFrame" .. i);
+		local chatFrame = _G["ChatFrame" .. i];
 		if (chatFrame and chatFrame:IsVisible()) then
 			table.insert(frames, chatFrame);
 		end
 	end
 
 	for i = 1, 10 do
-		local chatFrame = getglobal("ChatFrame" .. i);
+		local chatFrame = _G["ChatFrame" .. i];
 		if (chatFrame and chatFrame.editBox and chatFrame.editBox:IsVisible()) then
 			table.insert(frames, chatFrame.editBox);
 		end
 	end
 
-	local chatBackground = getglobal("ChatFrame1Background");
+	local chatBackground = _G["ChatFrame1Background"];
 	if (chatBackground and chatBackground:IsVisible()) then
 		table.insert(frames, chatBackground);
 	end
 
-	local chatContainer = getglobal("ChatFrame1ButtonFrame");
+	local chatContainer = _G["ChatFrame1ButtonFrame"];
 	if (chatContainer and chatContainer:IsVisible()) then
 		table.insert(frames, chatContainer);
 	end
@@ -574,7 +620,7 @@ function ChatBar_CheckMouseOverChatArea()
 
 	local i;
 	for i = 1, CHAT_BAR_MAX_BUTTONS do
-		local button = getglobal("ChatBarFrameButton" .. i);
+		local button = _G["ChatBarFrameButton" .. i];
 		if (button and button:IsVisible() and ChatBar_IsMouseOverFrame(button)) then
 			return true;
 		end
